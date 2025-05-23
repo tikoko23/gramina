@@ -1,0 +1,8 @@
+include_backup
+include/gen/**
+build/**
+.cache
+.clangd
+treesitter/**
+local/**
+**/__pycache__/*
