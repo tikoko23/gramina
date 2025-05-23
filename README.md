@@ -68,7 +68,7 @@ int main(void) {
 
 ```lawn
 // test.lawn
-fn sum(int a, int b) -> void {
+fn sum(int a, int b) -> int {
     return a + b;
 }
 ```
