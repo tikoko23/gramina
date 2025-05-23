@@ -1,0 +1,13 @@
+fn is_prime(ulong n) -> bool {
+    if n < 2u {
+        return false;
+    }
+
+    for ulong i = 2u; i * i <= n; i = i + 1u {
+        if n % i == 0u {
+            return false;
+        }
+    }
+
+    return true;
+}
