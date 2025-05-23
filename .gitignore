@@ -3,6 +3,6 @@ include/gen/**
 build/**
 .cache
 .clangd
-treesitter/**
+tools/treesitter/src/**
 local/**
 **/__pycache__/*

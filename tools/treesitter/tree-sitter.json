@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "version": "0.1.0",
+    "authors": [
+      {
+        "name": "tikoko"
+      }
+    ]
+  },
+  "grammars": [
+    {
+      "name": "gramina",
+      "scope": "source.gramina",
+      "file-types": [
+        "gramina",
+        "lawn",
+        "l"
+      ]
+    }
+  ]
+}
