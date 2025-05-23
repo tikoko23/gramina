@@ -8,9 +8,6 @@
 #include "parser/parser.h"
 #include "compiler/compiler.h"
 
-GRAMINA_DECLARE_ARRAY(int);
-GRAMINA_IMPLEMENT_ARRAY(int);
-
 static void highlight_char(const char *source, size_t line, size_t column) {
     FILE *file = fopen(source, "r");
     if (!file) {

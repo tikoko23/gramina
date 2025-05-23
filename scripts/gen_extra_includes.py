@@ -80,18 +80,21 @@ def process_header(filename: str) -> None:
     nn_h_guard = make_header_guard(f"{bare_name}_NN")
     tg_h_guard = make_header_guard(f"{bare_name}_TG")
 
+    no_namespace_defs = "\n".join(sorted(no_namespace_lines))
+    tagless_defs = "\n".join(sorted(want_tagless_lines))
+
     with open(gen_file, "w") as generated:
         generated.write(f"""
 #if defined(GRAMINA_NO_NAMESPACE) && !defined({nn_h_guard})
 #define {nn_h_guard}
 
-{"\n".join(sorted(no_namespace_lines))}
+{no_namespace_defs}
 
 #endif
 #if defined(GRAMINA_WANT_TAGLESS) && !defined({tg_h_guard})
 #define {tg_h_guard}
 
-{"\n".join(sorted(want_tagless_lines))}
+{tagless_defs}
 
 #endif
 """.strip() + "\n")
