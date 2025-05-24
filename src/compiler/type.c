@@ -4,9 +4,11 @@
 
 #include "common/str.h"
 #include "common/hashmap.h"
+
 #include "compiler/identifier.h"
 #include "compiler/type.h"
 #include "compiler/typedecl.h"
+
 #include "parser/ast.h"
 
 GRAMINA_IMPLEMENT_ARRAY(_GraminaType);

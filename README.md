@@ -50,6 +50,7 @@ clang -o sum ./out.ll ./host.c
 
 ```c
 // host.c
+#include <stdio.h>
 #include <stdint.h>
 
 int32_t sum(int32_t a, int32_t b);

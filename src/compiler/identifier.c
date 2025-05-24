@@ -1,9 +1,10 @@
-#include <llvm-c/Core.h>
-#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
-#include "compiler/type.h"
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+
 #include "compiler/identifier.h"
+#include "compiler/type.h"
 
 GRAMINA_IMPLEMENT_ARRAY(GraminaIdentifier)
 

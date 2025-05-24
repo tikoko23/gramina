@@ -1,8 +1,8 @@
+#define GRAMINA_NO_NAMESPACE
+
 #include <errno.h>
 #include <stdarg.h>
 #include <string.h>
-
-#define GRAMINA_NO_NAMESPACE
 
 #include "common/mem.h"
 #include "common/stream.h"

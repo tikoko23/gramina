@@ -1,14 +1,13 @@
-#include <llvm-c/Core.h>
 #define GRAMINA_NO_NAMESPACE
 #define PAUSE_ON_ERR 0
 
-#include <string.h>
 #include <stddef.h>
+#include <string.h>
+
+#include "common/array.h"
 
 #include "parser/ast.h"
 #include "parser/parser.h"
-
-#include "common/array.h"
 
 #define SV_NULL ((StringView) { .length = GRAMINA_ZERO, .data = NULL })
 
@@ -61,8 +60,6 @@
 
 
 struct tagged_parser_state;
-
-typedef Optional(void) (*GrammarRule)(struct tagged_parser_state *this);
 
 typedef struct tagged_parser_state {
     size_t index;

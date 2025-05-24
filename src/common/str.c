@@ -1,10 +1,10 @@
+#define GRAMINA_NO_NAMESPACE
+
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#define GRAMINA_NO_NAMESPACE
 
 #include "common/def.h"
 #include "common/mem.h"

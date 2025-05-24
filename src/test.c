@@ -1,12 +1,14 @@
 #define GRAMINA_NO_NAMESPACE
 
-#include "common/error.h"
 #include "common/array.h"
+#include "common/error.h"
 #include "common/hashmap.h"
+
+#include "compiler/compiler.h"
+
 #include "parser/ast.h"
 #include "parser/lexer.h"
 #include "parser/parser.h"
-#include "compiler/compiler.h"
 
 static void highlight_char(const char *source, size_t line, size_t column) {
     FILE *file = fopen(source, "r");

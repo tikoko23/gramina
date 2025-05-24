@@ -2,12 +2,10 @@
 
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Transforms/PassBuilder.h>
-#include <llvm-c/Types.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
-
-#include "parser/ast.h"
+#include <llvm-c/Transforms/PassBuilder.h>
+#include <llvm-c/Types.h>
 
 #include "common/hashmap.h"
 
@@ -15,6 +13,8 @@
 #include "compiler/cstate.h"
 #include "compiler/identifier.h"
 #include "compiler/type.h"
+
+#include "parser/ast.h"
 
 GRAMINA_IMPLEMENT_ARRAY(_GraminaReflection);
 

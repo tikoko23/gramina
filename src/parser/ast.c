@@ -1,9 +1,10 @@
-#include <stdint.h>
 #define GRAMINA_NO_NAMESPACE
+
+#include <stdint.h>
 
 #include "common/array.h"
 #include "common/str.h"
-#include "common/str.h"
+
 #include "parser/ast.h"
 
 #undef bool
