@@ -12,6 +12,7 @@ Gramina is developed, built and tested on GNU/Linux.
 Support for Windows and MacOS is considered, and will be worked on in the future.
 
 # Building
+Ensure `livLLVM-19.so` is available on the system library path.
 The CMake configuration defines the following targets:
 - `gracommon` (static library)
 - `graparse` (static library)
@@ -78,4 +79,4 @@ fn sum(int a, int b) -> int {
 Documentation of the language and the compiler frontend is currently lacking. Since the language is still in very early stages, significant changes are expected, thus documentation is not the top priority. 
 
 # Codebase
-The gramina codebase uses header generation to provide namespace-like functionality. `CMakeLists.txt` creates an appropriate to call related files from `scripts/*.py`.
+The gramina codebase uses header generation to provide namespace-like functionality. `CMakeLists.txt` creates an appropriate target to call related files from `scripts/*.py`.

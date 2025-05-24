@@ -44,4 +44,4 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(test PRIVATE -fsanitize=address)
 endif()
 
-target_link_libraries(test ${LLVM_LIBS} m graparse gracompile gracommon)
+target_link_libraries(test m graparse gracompile gracommon ${LLVM_LIBS})
