@@ -213,7 +213,7 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
     case GRAMINA_AST_VAL_BOOL:
         return type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
     case GRAMINA_AST_VAL_CHAR:
-        return type_from_primitive(GRAMINA_PRIMITIVE_UBYTE);
+        return type_from_primitive(GRAMINA_PRIMITIVE_BYTE);
 
     case GRAMINA_AST_VAL_F32:
         return type_from_primitive(GRAMINA_PRIMITIVE_FLOAT);

@@ -119,6 +119,8 @@ struct gramina_token_position {
 };
 
 union gramina_token_data {
+    uint8_t _char;
+
     int32_t i32;
     uint32_t u32;
 

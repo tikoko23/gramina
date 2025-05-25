@@ -64,6 +64,7 @@ void gramina_ast_node_free(AstNode *this) {
     switch (this->type) {
     case GRAMINA_AST_IDENTIFIER:
     case GRAMINA_AST_FUNCTION_DEF:
+    case GRAMINA_AST_FUNCTION_DECLARATION:
         str_free(&this->value.identifier);
         break;
     default:
@@ -317,6 +318,8 @@ StringView gramina_ast_node_type_to_str(AstNodeType e) {
         return mk_sv_c("FUNCTION_TYPE");
     case GRAMINA_AST_FUNCTION_DEF:
         return mk_sv_c("FUNCTION_DEF");
+    case GRAMINA_AST_FUNCTION_DECLARATION:
+        return mk_sv_c("FUNCTION_DECLARATION");
     case GRAMINA_AST_FUNCTION_DESCRIPTION:
         return mk_sv_c("FUNCTION_DESCRIPTION");
     case GRAMINA_AST_IDENTIFIER:

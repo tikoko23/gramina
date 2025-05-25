@@ -277,7 +277,7 @@ static AstNode *function_def(ParserState *S) {
 
     if (CURRENT(S).type == GRAMINA_TOK_SEMICOLON) {
         AstNode *this = mk_ast_node_lr(NULL, NULL, NULL);
-        this->type = GRAMINA_AST_FUNCTION_DEF;
+        this->type = GRAMINA_AST_FUNCTION_DECLARATION;
         this->pos = name->pos;
         this->value.identifier = str_dup(&name->value.identifier);
 
@@ -286,6 +286,8 @@ static AstNode *function_def(ParserState *S) {
         typ->pos = name->pos;
 
         ast_node_free(name);
+
+        CONSUME(S);
 
         return this;
     }
@@ -877,6 +879,7 @@ static AstNode *lit_quoted(ParserState *S) {
     case GRAMINA_TOK_LIT_STR_SINGLE:
         this = mk_ast_node(NULL);
         this->type = GRAMINA_AST_VAL_CHAR;
+        this->value._char = cur.data._char;
         break;
     case GRAMINA_TOK_LIT_STR_DOUBLE:
         this = mk_ast_node(NULL);

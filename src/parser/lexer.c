@@ -881,6 +881,10 @@ static int read_token(LexerState *S, Token *tok) {
                 return GRAMINA_LEX_ERR_BAD_TOK;
             }
 
+            if (ch == '\'') {
+                tok->data._char = *tok->contents.data;
+            }
+
             break;
         }
         case ':':

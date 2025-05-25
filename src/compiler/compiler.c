@@ -742,7 +742,7 @@ static Value primitive_comparison(CompilerState *S, const Value *left, const Val
         return invalid_value();
     }
 
-    bool signedness = primitive_is_unsigned(coerced.greater_type.primitive);
+    bool signedness = !primitive_is_unsigned(coerced.greater_type.primitive);
     bool integral = primitive_is_integral(coerced.greater_type.primitive);
 
     LLVMValueRef result;
@@ -1078,6 +1078,9 @@ static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
 
             return invalid_value();
         }
+
+        convert_inplace(S, arguments + i, expected);
+        try_load_inplace(S, arguments + i);
 
         llvm_args[i] = arguments[i].llvm;
     }
@@ -1544,8 +1547,6 @@ static void function_def(CompilerState *S, AstNode *this) {
         return;
     }
 
-    bool has_tail_return = check_tail_return(this);
-
     char *name_cstr = sv_to_cstr(&name);
     LLVMValueRef func = LLVMAddFunction(S->llvm_module, name_cstr, fn_type.llvm);
     gramina_free(name_cstr);
@@ -1558,7 +1559,13 @@ static void function_def(CompilerState *S, AstNode *this) {
     };
 
     Scope *parent_scope = array_last(GraminaScope, &S->scopes);
-    hashmap_set(&parent_scope->identifiers, str_as_view(&this->value.identifier), fn_ident);
+    hashmap_set(&parent_scope->identifiers, name, fn_ident);
+
+    if (this->type == GRAMINA_AST_FUNCTION_DECLARATION) {
+        return;
+    }
+
+    bool has_tail_return = check_tail_return(this);
 
     push_reflection(S, fn_type.return_type);
 
@@ -1572,11 +1579,11 @@ static void function_def(CompilerState *S, AstNode *this) {
     array_foreach_ref(_GraminaType, i, type, fn_type.param_types) {
         LLVMValueRef temp = LLVMGetParam(func, i);
 
-        String *name = &param_names.items[i];
-        char *cname = str_to_cstr(name);
+        String *param_name = &param_names.items[i];
+        char *cparam_name = str_to_cstr(param_name);
 
-        LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cname);
-        gramina_free(cname);
+        LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cparam_name);
+        gramina_free(cparam_name);
 
         LLVMBuildStore(S->llvm_builder, temp, allocated);
 
@@ -1587,9 +1594,9 @@ static void function_def(CompilerState *S, AstNode *this) {
             .kind = GRAMINA_IDENT_KIND_VAR,
         };
 
-        hashmap_set(&self_scope->identifiers, str_as_view(name), param);
+        hashmap_set(&self_scope->identifiers, str_as_view(param_name), param);
 
-        str_free(name);
+        str_free(param_name);
     }
 
     array_free(String, &param_names);
@@ -1633,6 +1640,7 @@ CompileResult gramina_compile(AstNode *root) {
     do {
         switch (cur->left->type) {
         case GRAMINA_AST_FUNCTION_DEF:
+        case GRAMINA_AST_FUNCTION_DECLARATION:
             function_def(&S, cur->left);
             break;
         default:
