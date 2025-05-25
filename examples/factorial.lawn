@@ -1,0 +1,7 @@
+fn factorial(ulong n) -> ulong {
+    if n <= 1u {
+        return 1u;
+    }
+
+    return factorial(n - 1u) * n;
+}

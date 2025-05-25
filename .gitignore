@@ -6,3 +6,5 @@ build/**
 tools/treesitter/src/**
 local/**
 **/__pycache__/*
+examples/*.ll
+examples/*.out

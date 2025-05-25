@@ -244,7 +244,6 @@ static AstNode *function_def(ParserState *S) {
 
     // TODO: parse attribs
 
-    // TODO: check if all paths return
     AstNode *return_type = NULL;
     if (CURRENT(S).type == GRAMINA_TOK_MINUS) {
         CONSUME(S);
@@ -267,13 +266,28 @@ static AstNode *function_def(ParserState *S) {
         }
     }
 
-    if (CURRENT(S).type != GRAMINA_TOK_BRACE_LEFT) {
-        SET_ERR(S, mk_str_c("expected '{'"));
+    if (CURRENT(S).type != GRAMINA_TOK_BRACE_LEFT && CURRENT(S).type != GRAMINA_TOK_SEMICOLON) {
+        SET_ERR(S, mk_str_c("expected '{' or ';'"));
 
         ast_node_free(name);
         ast_node_free(params);
         ast_node_free(return_type);
         return NULL;
+    }
+
+    if (CURRENT(S).type == GRAMINA_TOK_SEMICOLON) {
+        AstNode *this = mk_ast_node_lr(NULL, NULL, NULL);
+        this->type = GRAMINA_AST_FUNCTION_DEF;
+        this->pos = name->pos;
+        this->value.identifier = str_dup(&name->value.identifier);
+
+        AstNode *typ = mk_ast_node_lr(this, params, return_type);
+        typ->type = GRAMINA_AST_FUNCTION_TYPE;
+        typ->pos = name->pos;
+
+        ast_node_free(name);
+
+        return this;
     }
 
     CONSUME(S);
@@ -1128,6 +1142,8 @@ static AstNode *access_exp_pr(ParserState *S) {
         return NULL;
     }
 
+    TokenPosition pos = CURRENT(S).pos;
+
     CONSUME(S);
 
     AstNode *right = NULL;
@@ -1195,7 +1211,7 @@ static AstNode *access_exp_pr(ParserState *S) {
     AstNode *parent = access_exp_pr(S);
     AstNode *this = mk_ast_node_lr(parent, NULL, right);
     this->type = typ;
-    this->pos = right->pos;
+    this->pos = pos;
 
     return this;
 }

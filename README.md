@@ -29,7 +29,7 @@ cmake ..
 cmake --build .
 ```
 
-# Compiling
+# Usage
 A gramina file can be compiled using the `test` binary.
 ```bash
 ./test <filename>
@@ -41,42 +41,22 @@ This file can be used with an LLVM frontend (such as clang):
 clang -o test_executable ./out.ll host.c
 ```
 
-### Minimal Example
+## Running examples
+An example consist of a `.lawn` and a `.c` file, with the same basename. Source code for the examples can be found in `examples/`.
+To run an example, ensure `clang` is in your `PATH` environment variable.
+
 ```bash
-# Compilation
-./test test.lawn
-clang -o sum ./out.ll ./host.c
-./sum
+# Creates `examples/<name>.out` and `examples/<name>.ll`
+scripts/run_example.sh <name>
 ```
 
-```c
-// host.c
-#include <stdio.h>
-#include <stdint.h>
-
-int32_t sum(int32_t a, int32_t b);
-
-int main(void) {
-    int a = 10;
-    int b = 13;
-    int result = sum(a, b);
-
-    printf("%d\n", result);
-
-    return 0;
-}
-
-```
-
-```lawn
-// test.lawn
-fn sum(int a, int b) -> int {
-    return a + b;
-}
+To clean the generated binaries and IR inside `examples/`, run the following script:
+```bash
+scripts/clean_examples.sh
 ```
 
 # Documentation
-Documentation of the language and the compiler frontend is currently lacking. Since the language is still in very early stages, significant changes are expected, thus documentation is not the top priority. 
+Documentation of the language and the compiler frontend is currently lacking. Since the language is still in very early stages, significant changes are expected, thus documentation is not the top priority.
 
 # Codebase
-The gramina codebase uses header generation to provide namespace-like functionality. `CMakeLists.txt` creates an appropriate target to call related files from `scripts/*.py`.
+The gramina codebase uses header generation to provide namespace-like functionality. `CMakeLists.txt` creates an appropriate which calls related files from `scripts/*.py`.

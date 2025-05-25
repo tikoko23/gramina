@@ -22,6 +22,7 @@ GRAMINA_DECLARE_ARRAY(String, static);
 GRAMINA_IMPLEMENT_ARRAY(String, static);
 
 #define CURRENT_SCOPE(S) (array_last(GraminaScope, &S->scopes))
+#define REFLECT(index) (S->reflection.items + (index))
 
 typedef enum {
     CLASS_INVALID,
@@ -194,6 +195,21 @@ static void err_illegal_op(CompilerState *S, const Type *l, const Type *r, const
 static void err_missing_ret(CompilerState *S, const Type *ret, TokenPosition pos) {
     puts_err(S, str_cfmt("type '{so}' must be returned on function tail", type_to_str(ret)), pos);
     S->status = GRAMINA_COMPILE_ERR_MISSING_RETURN;
+}
+
+static void err_cannot_call(CompilerState *S, const Type *type, TokenPosition pos) {
+    puts_err(S, str_cfmt("cannot call value of type '{so}'", type_to_str(type)), pos);
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+static void err_insufficient_args(CompilerState *S, size_t wants, size_t got, TokenPosition pos) {
+    puts_err(S, str_cfmt("function call expected {u64} argumen{cstr}, got {u64}", wants, wants == 1 ? "t" : "ts", got), pos);
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+static void err_excess_args(CompilerState *S, size_t wants, TokenPosition pos) {
+    puts_err(S, str_cfmt("function call expected {u64} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"), pos);
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
 static Value primitive_convert(CompilerState *S, const Value *from, const Type *to) {
@@ -992,6 +1008,102 @@ static Value binary_logic(CompilerState *S, LLVMValueRef function, AstNode *this
     return ret;
 }
 
+static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    // TODO: operator overloading
+
+    StringView func_name = str_as_view(&this->left->value.identifier);
+    Identifier *func = resolve(S, &func_name);
+
+    if (func->kind != GRAMINA_IDENT_KIND_FUNC) {
+        err_cannot_call(S, &func->type, this->left->pos);
+        return invalid_value();
+    }
+
+    Type *fn_type = &func->type;
+
+    size_t params_capacity = fn_type->param_types.length + 1;
+    AstNode *params[params_capacity]; // The array should not have a size of 0
+
+    params[0] = NULL;
+
+    AstNode *current = this->right;
+    for (size_t i = 1; i < params_capacity; ++i) {
+        if (!current) {
+            err_insufficient_args(S, params_capacity - 1, i - 1, this->pos);
+            return invalid_value();
+        }
+
+        if (current->type == GRAMINA_AST_EXPRESSION_LIST) {
+            params[i] = current->left;
+        } else {
+            params[i] = current;
+        }
+
+        current = current->right;
+    }
+
+    if (current && current->parent->type == GRAMINA_AST_EXPRESSION_LIST
+     || params_capacity == 1 && this->right != NULL) {
+        err_excess_args(S, params_capacity - 1, this->pos);
+        return invalid_value();
+    }
+
+    Value arguments[params_capacity];
+    LLVMValueRef llvm_args[params_capacity];
+
+    arguments[0] = invalid_value();
+    llvm_args[0] = NULL;
+
+    for (size_t i = 1; i < params_capacity; ++i) {
+        Type *expected = fn_type->param_types.items + i - 1;
+
+        AstNode *param = params[i];
+
+        push_reflection(S, expected);
+        ++S->reflection_depth;
+
+        arguments[i] = expression(S, function, param);
+
+        --S->reflection_depth;
+        pop_reflection(S);
+
+        Type *got = &arguments[i].type;
+
+        if (!type_can_convert(S, got, expected)) {
+            err_implicit_conv(S, got, expected, param->pos);
+
+            for (size_t j = 1; j <= i; ++j) {
+                value_free(arguments + j);
+            }
+
+            return invalid_value();
+        }
+
+        llvm_args[i] = arguments[i].llvm;
+    }
+
+    LLVMValueRef result = LLVMBuildCall2(
+        S->llvm_builder,
+        fn_type->llvm,
+        func->llvm,
+        llvm_args + 1,
+        params_capacity - 1,
+        ""
+    );
+
+    Value ret = {
+        .llvm = result,
+        .class = CLASS_RVALUE,
+        .type = type_dup(fn_type->return_type),
+    };
+
+    for (size_t i = 1; i < params_capacity; ++i) {
+        value_free(arguments + i);
+    }
+
+    return ret;
+}
+
 static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
     switch (this->type) {
     case GRAMINA_AST_IDENTIFIER: {
@@ -1085,6 +1197,8 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
     case GRAMINA_AST_OP_LOGICAL_XOR:
     case GRAMINA_AST_OP_LOGICAL_AND:
         return binary_logic(S, function, this);
+    case GRAMINA_AST_OP_CALL:
+        return call(S, function, this);
     default:
         err_illegal_node(S, this);
         return invalid_value();
@@ -1157,9 +1271,9 @@ static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) 
 
 static void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
     ++S->reflection_depth;
-    Reflection *reflection = array_last(_GraminaReflection, &S->reflection);
+    size_t reflection_index = S->reflection.length - 1;
 
-    if (reflection->type.kind == GRAMINA_TYPE_VOID) {
+    if (REFLECT(reflection_index)->type.kind == GRAMINA_TYPE_VOID) {
         if (this->left) {
             putcs_err(S, "return statement cannot have expression in function of type 'void'", this->left->pos);
             S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
@@ -1175,14 +1289,14 @@ static void return_statement(CompilerState *S, LLVMValueRef function, AstNode *t
         return;
     }
 
-    if (!type_can_convert(S, &exp.type, &reflection->type)) {
-        err_implicit_conv(S, &exp.type, &reflection->type, this->left->pos);
+    if (!type_can_convert(S, &exp.type, &REFLECT(reflection_index)->type)) {
+        err_implicit_conv(S, &exp.type, &REFLECT(reflection_index)->type, this->left->pos);
         value_free(&exp);
         return;
     }
 
-    if (!type_is_same(&exp.type, &reflection->type)) {
-        Value ret = convert(S, &exp, &reflection->type);
+    if (!type_is_same(&exp.type, &REFLECT(reflection_index)->type)) {
+        Value ret = convert(S, &exp, &REFLECT(reflection_index)->type);
         value_free(&exp);
         exp = ret;
     }

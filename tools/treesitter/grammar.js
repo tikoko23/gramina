@@ -132,9 +132,14 @@ module.exports = grammar({
         "->",
         $.typename
       )),
-      "{",
-      repeat($.statement),
-      "}"
+      choice(
+        ";",
+        seq(
+          "{",
+          repeat($.statement),
+          "}"
+        )
+      )
     ),
 
     typename: $ => seq(
