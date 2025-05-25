@@ -4,6 +4,9 @@
 
 (number) @number
 (bool) @boolean
+(char) @character
+
+[(char_escape_seq)] @string.escape
 
 [
   (evaluative_op)

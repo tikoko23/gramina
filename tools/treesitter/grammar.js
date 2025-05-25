@@ -17,6 +17,19 @@ function op(_, r) {
   return r;
 }
 
+function escape(quote_char) {
+  return seq(
+    "\\",
+    choice(
+      "\\",
+      seq("x", /[0-9abcdefABCDEF]{2}/),
+      /[01234567]{3}/,
+      /0|n|t|f|v|e/,
+      quote_char
+    ),
+  );
+}
+
 module.exports = grammar({
   name: "gramina",
 
@@ -121,6 +134,7 @@ module.exports = grammar({
     function_attribs: $ => repeat1(
       seq("#", $.identifier)
     ),
+
     function_def: $ => seq(
       optional($.function_attribs),
       keyword("fn"),
@@ -172,6 +186,17 @@ module.exports = grammar({
       ),
     ),
 
+    char_escape_seq: _ => escape("'"),
+
+    char: $ => seq(
+      "'",
+      repeat1(choice(
+        $.char_escape_seq,
+        /[^\\']/
+      )),
+      "'"
+    ),
+
     bool: _ => choice(
       keyword("true"),
       keyword("false")
@@ -181,6 +206,7 @@ module.exports = grammar({
       $.identifier,
       $.number,
       $.bool,
+      $.char,
     ),
 
     expression: $ => $.assignment_exp,
