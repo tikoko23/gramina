@@ -9,7 +9,7 @@
 #define __gramina_str_foreach_guts(index_var, ch_var, str_decl) \
 GRAMINA_BEGIN_BLOCK_DECL() \
 GRAMINA_BLOCK_DECL(char ch_var = '\0') \
-GRAMINA_BLOCK_DECL(size_t index_var = GRAMINA_ZERO) \
+GRAMINA_BLOCK_DECL(size_t index_var = 0) \
 for (str_decl; index_var < __str.length && (ch_var = __str.data[index_var], 1); ++index_var)
 
 #define gramina_str_foreach(index_var, ch_var, str) \
@@ -18,7 +18,7 @@ __gramina_str_foreach_guts(index_var, ch_var, String __str = (str))
 #define gramina_str_foreach_ref(index_var, ch_var, str) \
 GRAMINA_BEGIN_BLOCK_DECL() \
 GRAMINA_BLOCK_DECL(char *ch_var = NULL) \
-GRAMINA_BLOCK_DECL(size_t index_var = GRAMINA_ZERO) \
+GRAMINA_BLOCK_DECL(size_t index_var = 0) \
 for (String __str = (str); index_var < __str.length && (ch_var = &__str.data[index_var], 1); ++index_var)
 
 #define gramina_sv_foreach(index_var, ch_var, sv) \

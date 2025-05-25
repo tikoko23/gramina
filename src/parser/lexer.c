@@ -5,11 +5,11 @@
 
 #include "parser/lexer.h"
 
-#define PROP(err) do { if (err) return err; } while (GRAMINA_ZERO)
+#define PROP(err) do { if (err) return err; } while (0)
 #define safe_peek(S, ch_ptr) do { \
     status = peek_ch(S, ch_ptr); \
     if (status) { return status; } \
-} while (GRAMINA_ZERO) \
+} while (0) \
 
 typedef struct tagged_lexer_state {
     TokenPosition pos;
@@ -28,16 +28,16 @@ typedef struct {
 
 static ReadableCharBuf readable_char(char c) {
     ReadableCharBuf buf = {
-        .c = { GRAMINA_ZERO, GRAMINA_ZERO, GRAMINA_ZERO, GRAMINA_ZERO }
+        .c = { 0, 0, 0, 0 }
     };
 
     switch (c) {
     case '\n':
-        buf.c[GRAMINA_ZERO] = '\\';
+        buf.c[0] = '\\';
         buf.c[1] = 'n';
         break;
     default:
-        buf.c[GRAMINA_ZERO] = c;
+        buf.c[0] = c;
         break;
     }
 
@@ -73,7 +73,7 @@ static int read_ch(LexerState *S, char *ch) {
     case '\n':
         ++S->pos.depth;
         ++S->pos.line;
-        S->pos.column = GRAMINA_ZERO;
+        S->pos.column = 0;
         break;
     default:
         ++S->pos.depth;
@@ -126,7 +126,7 @@ static int consume_ch(LexerState *S) {
 
 static uint8_t convert_hex_digit(char ch) {
     if (!isxdigit(ch)) {
-        return GRAMINA_ZERO;
+        return 0;
     }
 
     ch = tolower(ch);
@@ -182,9 +182,9 @@ static int read_escape(LexerState *S, String *into, char quote) {
         str_append(into, '\0');
         break;
     case 'x': {
-        uint8_t hex = GRAMINA_ZERO;
+        uint8_t hex = 0;
 
-        for (uint8_t mul = 16; mul > GRAMINA_ZERO; mul /= 16) {
+        for (uint8_t mul = 16; mul > 0; mul /= 16) {
             consume_ch(S);
             safe_peek(S, &ch);
             if (!isxdigit(ch)) {
@@ -200,9 +200,9 @@ static int read_escape(LexerState *S, String *into, char quote) {
         break;
     }
     case 'o': {
-        uint8_t octal = GRAMINA_ZERO;
+        uint8_t octal = 0;
 
-        for (uint8_t mul = 64; mul > GRAMINA_ZERO; mul /= 8) {
+        for (uint8_t mul = 64; mul > 0; mul /= 8) {
             consume_ch(S);
             safe_peek(S, &ch);
             if (!isodigit(ch)) {
@@ -689,9 +689,9 @@ static int read_number(LexerState *S, TokenData *data, TokenType *typ) {
         }
     }
 
-    size_t l_count = GRAMINA_ZERO;
-    size_t u_count = GRAMINA_ZERO;
-    size_t f_count = GRAMINA_ZERO;
+    size_t l_count = 0;
+    size_t u_count = 0;
+    size_t f_count = 0;
 
     str_foreach(_, c, suffixes) {
         switch (c) {
@@ -716,7 +716,7 @@ static int read_number(LexerState *S, TokenData *data, TokenType *typ) {
         case 'F':
             ++f_count;
 
-            if (u_count > GRAMINA_ZERO) {
+            if (u_count > 0) {
                 put_err(S, mk_str_c("found 'F' suffix with unsigned literal"));
                 goto illegal_suffix;
             }
@@ -783,7 +783,7 @@ static int read_number(LexerState *S, TokenData *data, TokenType *typ) {
 
 static int read_token(LexerState *S, Token *tok) {
     char ch;
-    int status = GRAMINA_ZERO;
+    int status = 0;
 
     while (true) {
         status = peek_ch(S, &ch);
@@ -806,7 +806,7 @@ static int read_token(LexerState *S, Token *tok) {
 
     TokenPosition start_pos = S->pos;
 
-    tok->flags = GRAMINA_ZERO;
+    tok->flags = 0;
     tok->data = (TokenData) {};
     tok->contents = mk_str();
 
@@ -921,8 +921,8 @@ LexResult gramina_lex(Stream *source) {
     LexerState S = {
         .pos = {
             .line = 1,
-            .column = GRAMINA_ZERO,
-            .depth = GRAMINA_ZERO,
+            .column = 0,
+            .depth = 0,
         },
         .pending_error = mk_str(),
         .put = '\0',
@@ -950,16 +950,16 @@ LexResult gramina_lex(Stream *source) {
 
     TokenPosition last_pos = S.tokens.length > 0
                            ? array_last(GraminaToken, &S.tokens)->pos
-                           : (TokenPosition){ .line = 1, .column = 1, .depth = GRAMINA_ZERO };
+                           : (TokenPosition){ .line = 1, .column = 1, .depth = 0 };
 
-    if (S.tokens.length > GRAMINA_ZERO) {
+    if (S.tokens.length > 0) {
         ++last_pos.depth;
         ++last_pos.column;
     }
 
     tok = (Token) {
         .pos = last_pos,
-        .flags = GRAMINA_ZERO,
+        .flags = 0,
         .type = GRAMINA_TOK_EOF,
         .contents = mk_str(),
         .data = {}

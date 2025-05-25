@@ -13,11 +13,11 @@ Identifier *gramina_scope_resolve(const Scope *this, const StringView *ident_nam
 }
 
 Identifier *gramina_resolve(const CompilerState *S, const StringView *ident_name) {
-    if (S->scopes.length == GRAMINA_ZERO) {
+    if (S->scopes.length == 0) {
         return NULL;
     }
 
-    for (int32_t i = S->scopes.length - 1; i >= GRAMINA_ZERO; --i) {
+    for (int32_t i = S->scopes.length - 1; i >= 0; --i) {
         Identifier *candidate = scope_resolve(&S->scopes.items[i], ident_name);
 
         if (candidate) {

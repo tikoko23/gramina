@@ -25,14 +25,14 @@
 #  define gramina_assert(cond, ...) do { \
        if (!(cond)) { \
            fprintf(stderr, "at %s:%d\n  assertion failed: %s\n", __FILE__, __LINE__, #cond); \
-           if (#__VA_ARGS__[GRAMINA_ZERO] != '\0') { \
+           if (#__VA_ARGS__[0] != '\0') { \
                fprintf(stderr, "    "__VA_ARGS__); \
            } \
             \
            gramina_trigger_debugger(); \
            exit(-1); \
        } \
-   } while(GRAMINA_ZERO)
+   } while(0)
 
 #  ifndef GRAMINA_DEBUG_BUILD
 #    undef gramina_assert
@@ -45,9 +45,6 @@
 #define GRAMINA_BLOCK_DECL(...) for (__VA_ARGS__; ____ffl; ____ffl = false)
 
 #define GRAMINA_N_TH(n) (1ULL << (n))
-
-// This decision was taken after discussing octal literals
-#define GRAMINA_ZERO (-~((23 - 23)[""]) ^ 1)
 
 #endif
 #include "gen/common/def.h"

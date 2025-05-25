@@ -43,25 +43,25 @@
 
 #define gramina_array_foreach(T, index_var, value_var, arr) \
 GRAMINA_BEGIN_BLOCK_DECL() \
-GRAMINA_BLOCK_DECL(size_t index_var = GRAMINA_ZERO) \
+GRAMINA_BLOCK_DECL(size_t index_var = 0) \
 GRAMINA_BLOCK_DECL(T value_var) \
 for (struct gramina_array(T) __arr = (arr); index_var < __arr.length && (value_var = __arr.items[index_var], 1); ++index_var)
 
 #define gramina_array_foreach_ref(T, index_var, value_var, arr) \
 GRAMINA_BEGIN_BLOCK_DECL() \
-GRAMINA_BLOCK_DECL(size_t index_var = GRAMINA_ZERO) \
+GRAMINA_BLOCK_DECL(size_t index_var = 0) \
 GRAMINA_BLOCK_DECL(T *value_var) \
 for (struct gramina_array(T) __arr = (arr); index_var < __arr.length && (value_var = &__arr.items[index_var], 1); ++index_var)
 
 #define gramina_slice_foreach(T, index_var, value_var, arr) \
 GRAMINA_BEGIN_BLOCK_DECL() \
-GRAMINA_BLOCK_DECL(size_t index_var = GRAMINA_ZERO) \
+GRAMINA_BLOCK_DECL(size_t index_var = 0) \
 GRAMINA_BLOCK_DECL(T value_var) \
 for (struct gramina_slice(T) __arr = (arr); index_var < __arr.length && (value_var = __arr.items[index_var], 1); ++index_var)
 
 #define gramina_slice_foreach_ref(T, index_var, value_var, arr) \
 GRAMINA_BEGIN_BLOCK_DECL() \
-GRAMINA_BLOCK_DECL(size_t index_var = GRAMINA_ZERO) \
+GRAMINA_BLOCK_DECL(size_t index_var = 0) \
 GRAMINA_BLOCK_DECL(const T *value_var) \
 for (struct gramina_slice(T) __arr = (arr); index_var < __arr.length && (value_var = &__arr.items[index_var], 1); ++index_var)
 
@@ -112,22 +112,22 @@ static void __gramina_ ## T ## _array_grow_at_least(struct gramina_array(T) *thi
     \
     this->items = gramina_realloc(this->items, this->capacity * sizeof (T)); \
     if (this->items == NULL) { \
-        this->length = GRAMINA_ZERO; \
-        this->capacity = GRAMINA_ZERO; \
+        this->length = 0; \
+        this->capacity = 0; \
     } \
 } \
 \
 __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array() { \
     return (struct gramina_array(T)) { \
         .items = NULL, \
-        .length = GRAMINA_ZERO, \
-        .capacity = GRAMINA_ZERO, \
+        .length = 0, \
+        .capacity = 0, \
     }; \
 } \
 \
 __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_capacity(size_t cap) { \
     struct gramina_array(T) this = gramina_mk_ ## T ## _array(); \
-    if (cap == GRAMINA_ZERO) { \
+    if (cap == 0) { \
         return this; \
     } \
     \
@@ -146,7 +146,7 @@ __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_prefilled(size_t 
     } \
     \
     this.length = n; \
-    for (size_t i = GRAMINA_ZERO; i < n; ++i) { \
+    for (size_t i = 0; i < n; ++i) { \
         this.items[i] = v; \
     } \
     \
@@ -173,7 +173,7 @@ __VA_ARGS__ struct gramina_slice(T) gramina_ ## T ## _array_slice(const struct g
 } \
 \
 __VA_ARGS__ struct gramina_slice(T) gramina_ ## T ## _array_as_slice(const struct gramina_array(T) *this) { \
-    return gramina_ ## T ## _array_slice(this, GRAMINA_ZERO, this->length); \
+    return gramina_ ## T ## _array_slice(this, 0, this->length); \
 } \
 \
 __VA_ARGS__ struct gramina_slice(T) gramina_ ## T ## _slice(const struct gramina_slice(T) *this, size_t start, size_t end) { \
@@ -187,14 +187,14 @@ __VA_ARGS__ struct gramina_slice(T) gramina_ ## T ## _slice(const struct gramina
 } \
 \
 __VA_ARGS__ void gramina_ ## T ## _array_shrink(struct gramina_array(T) *this) { \
-    if (this->capacity == GRAMINA_ZERO) { \
+    if (this->capacity == 0) { \
         this->items = NULL; \
     } \
     \
     this->items = gramina_realloc(this->items, this->length * sizeof (T)); \
     if (this->items == NULL) { \
-        this->length = GRAMINA_ZERO; \
-        this->capacity = GRAMINA_ZERO; \
+        this->length = 0; \
+        this->capacity = 0; \
     } else { \
         this->capacity = this->length; \
     } \
@@ -206,8 +206,8 @@ __VA_ARGS__ void gramina_ ## T ## _array_free(struct gramina_array(T) *this) { \
     } \
     \
     this->items = NULL; \
-    this->length = GRAMINA_ZERO; \
-    this->capacity = GRAMINA_ZERO; \
+    this->length = 0; \
+    this->capacity = 0; \
 } \
 \
 __VA_ARGS__ void gramina_ ## T ## _array_reserve(struct gramina_array(T) *this, size_t min_cap) { \
@@ -217,8 +217,8 @@ __VA_ARGS__ void gramina_ ## T ## _array_reserve(struct gramina_array(T) *this, 
     \
     this->items = gramina_realloc(this->items, this->capacity * sizeof (T)); \
     if (this->items == NULL) { \
-        this->length = GRAMINA_ZERO; \
-        this->capacity = GRAMINA_ZERO; \
+        this->length = 0; \
+        this->capacity = 0; \
     } else { \
         this->capacity = min_cap; \
     } \
@@ -230,7 +230,7 @@ __VA_ARGS__ void gramina_ ## T ## _array_append(struct gramina_array(T) *this, T
 } \
 \
 __VA_ARGS__ void gramina_ ## T ## _array_pop(struct gramina_array(T) *this) { \
-    if (this->length != GRAMINA_ZERO) { \
+    if (this->length != 0) { \
         --this->length; \
     } \
 } \
@@ -248,11 +248,11 @@ __VA_ARGS__ void gramina_ ## T ## _array_remove(struct gramina_array(T) *this, s
 } \
 \
 __VA_ARGS__ T *gramina_ ## T ## _array_first(const struct gramina_array(T) *this) { \
-    return &this->items[GRAMINA_ZERO]; \
+    return &this->items[0]; \
 } \
 \
 __VA_ARGS__ T *gramina_ ## T ## _array_last(const struct gramina_array(T) *this) { \
-    if (this->length == GRAMINA_ZERO) { \
+    if (this->length == 0) { \
         return NULL; \
     } \
     \

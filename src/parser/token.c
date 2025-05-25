@@ -8,40 +8,40 @@ GRAMINA_IMPLEMENT_ARRAY(GraminaTokenType)
 void gramina_token_free(Token *this) {
     str_free(&this->contents);
 
-    this->pos.line = GRAMINA_ZERO;
-    this->pos.column = GRAMINA_ZERO;
-    this->pos.depth = GRAMINA_ZERO;
+    this->pos.line = 0;
+    this->pos.column = 0;
+    this->pos.depth = 0;
     this->type = GRAMINA_TOK_ILL_FORMED;
-    this->flags = GRAMINA_ZERO;
+    this->flags = 0;
 }
 
 TokenType gramina_classify_wordlike(const StringView *w) {
     if (false) {
-    } else if (sv_cmp_c(w, "true") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "true") == 0) {
         return GRAMINA_TOK_KW_TRUE;
-    } else if (sv_cmp_c(w, "false") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "false") == 0) {
         return GRAMINA_TOK_KW_FALSE;
-    } else if (sv_cmp_c(w, "const") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "const") == 0) {
         return GRAMINA_TOK_KW_CONST;
-    } else if (sv_cmp_c(w, "import") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "import") == 0) {
         return GRAMINA_TOK_KW_IMPORT;
-    } else if (sv_cmp_c(w, "fence") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "fence") == 0) {
         return GRAMINA_TOK_KW_FENCE;
-    } else if (sv_cmp_c(w, "fn") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "fn") == 0) {
         return GRAMINA_TOK_KW_FN;
-    } else if (sv_cmp_c(w, "struct") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "struct") == 0) {
         return GRAMINA_TOK_KW_STRUCT;
-    } else if (sv_cmp_c(w, "if") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "if") == 0) {
         return GRAMINA_TOK_KW_IF;
-    } else if (sv_cmp_c(w, "else") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "else") == 0) {
         return GRAMINA_TOK_KW_ELSE;
-    } else if (sv_cmp_c(w, "for") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "for") == 0) {
         return GRAMINA_TOK_KW_FOR;
-    } else if (sv_cmp_c(w, "foreach") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "foreach") == 0) {
         return GRAMINA_TOK_KW_FOREACH;
-    } else if (sv_cmp_c(w, "while") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "while") == 0) {
         return GRAMINA_TOK_KW_WHILE;
-    } else if (sv_cmp_c(w, "return") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(w, "return") == 0) {
         return GRAMINA_TOK_KW_RETURN;
     } else {
         return GRAMINA_TOK_IDENTIFIER;

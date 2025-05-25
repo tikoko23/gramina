@@ -21,32 +21,32 @@ static void struct_field_free(void *field) {
 }
 
 static Type builtin_type(const StringView *i) {
-    if (sv_cmp_c(i, "void") == GRAMINA_ZERO) {
+    if (sv_cmp_c(i, "void") == 0) {
         return (Type) {
             .kind = GRAMINA_TYPE_VOID,
             .llvm = LLVMVoidType(),
         };
-    } else if (sv_cmp_c(i, "bool") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "bool") == 0) {
         return BUILTIN_PRIMITIVE(BOOL, Int1);
-    } else if (sv_cmp_c(i, "byte") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "byte") == 0) {
         return BUILTIN_PRIMITIVE(BYTE, Int8);
-    } else if (sv_cmp_c(i, "ubyte") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "ubyte") == 0) {
         return BUILTIN_PRIMITIVE(UBYTE, Int8);
-    } else if (sv_cmp_c(i, "short") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "short") == 0) {
         return BUILTIN_PRIMITIVE(SHORT, Int16);
-    } else if (sv_cmp_c(i, "ushort") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "ushort") == 0) {
         return BUILTIN_PRIMITIVE(USHORT, Int16);
-    } else if (sv_cmp_c(i, "int") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "int") == 0) {
         return BUILTIN_PRIMITIVE(INT, Int32);
-    } else if (sv_cmp_c(i, "uint") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "uint") == 0) {
         return BUILTIN_PRIMITIVE(UINT, Int32);
-    } else if (sv_cmp_c(i, "long") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "long") == 0) {
         return BUILTIN_PRIMITIVE(LONG, Int64);
-    } else if (sv_cmp_c(i, "ulong") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "ulong") == 0) {
         return BUILTIN_PRIMITIVE(ULONG, Int64);
-    } else if (sv_cmp_c(i, "float") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "float") == 0) {
         return BUILTIN_PRIMITIVE(FLOAT, Float);
-    } else if (sv_cmp_c(i, "double") == GRAMINA_ZERO) {
+    } else if (sv_cmp_c(i, "double") == 0) {
         return BUILTIN_PRIMITIVE(DOUBLE, Double);
     }
 
@@ -63,7 +63,7 @@ Type gramina_mk_pointer_type(const Type *pointed) {
     typ.pointer_type = gramina_malloc(sizeof *typ.pointer_type);
     *typ.pointer_type = type_dup(pointed);
 
-    typ.llvm = LLVMPointerType(typ.pointer_type->llvm, GRAMINA_ZERO);
+    typ.llvm = LLVMPointerType(typ.pointer_type->llvm, 0);
 
     return typ;
 }
@@ -78,7 +78,7 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
 
     switch (this->type) {
     case GRAMINA_AST_REFLECT: {
-        if (S->reflection.length == GRAMINA_ZERO) {
+        if (S->reflection.length == 0) {
             if (S->has_error) {
                 break;
             }
@@ -161,7 +161,7 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
         typ.pointer_type = gramina_malloc(sizeof *typ.pointer_type);
         *typ.pointer_type = type_from_ast_node(S, this->left);
 
-        typ.llvm = LLVMPointerType(typ.pointer_type->llvm, GRAMINA_ZERO);
+        typ.llvm = LLVMPointerType(typ.pointer_type->llvm, 0);
 
         return typ;
     }
@@ -178,7 +178,7 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
     case GRAMINA_AST_STRUCT_DEF: {
         const AstNode *old_this = this;
 
-        size_t field_count = GRAMINA_ZERO;
+        size_t field_count = 0;
         while ((this = this->right)) {
             ++field_count;
         }
@@ -350,7 +350,7 @@ bool gramina_type_is_same(const Type *a, const Type *b) {
     case GRAMINA_TYPE_SLICE:
         return type_is_same(a->slice_type, b->slice_type);
     case GRAMINA_TYPE_STRUCT:
-        if (str_cmp(&a->struct_name, &b->struct_name) != GRAMINA_ZERO) {
+        if (str_cmp(&a->struct_name, &b->struct_name) != 0) {
             return false;
         }
 
@@ -480,7 +480,7 @@ Type gramina_type_dup(const Type *this) {
             *typ.return_type = type_dup(this->return_type);
         }
 
-        if (this->param_types.length > GRAMINA_ZERO) {
+        if (this->param_types.length > 0) {
             typ.param_types = mk_array_capacity(_GraminaType, this->param_types.length);
             array_foreach_ref(_GraminaType, i, param, this->param_types) {
                 typ.param_types.items[i] = type_dup(param);
@@ -578,7 +578,7 @@ void gramina_type_free(Type *this) {
         this->struct_name = mk_str();
 
         hashmap_free(&this->fields);
-        this->fields = mk_hashmap(GRAMINA_ZERO);
+        this->fields = mk_hashmap(0);
 
         break;
     default:

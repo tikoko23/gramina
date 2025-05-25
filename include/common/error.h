@@ -48,7 +48,7 @@ void *__gramina_get_opt_value_ptr(size_t val_size, bool prev); /* ignore */
 
 #define gramina_mk_opt_v(T, v) ( \
     (struct gramina_optional) { \
-        .code = GRAMINA_ZERO, \
+        .code = 0, \
         .message = gramina_mk_str(), \
         .value = ( \
             *((T *)__gramina_get_opt_value_ptr(sizeof (v), false)) = (v), \
@@ -61,7 +61,7 @@ void *__gramina_get_opt_value_ptr(size_t val_size, bool prev); /* ignore */
 // An optional of type `FILE` must never be created anyway
 #define gramina_mk_opt_void() ( \
     (struct gramina_optional) { \
-        .code = GRAMINA_ZERO, \
+        .code = 0, \
         .message = gramina_mk_str(), \
         .value = stdin, \
     } \

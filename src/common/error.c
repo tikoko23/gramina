@@ -66,13 +66,13 @@ String gramina_highlight_line(const StringView *source, HighlightPosition loc, c
 
     str_append(&out, '\n');
 
-    for (size_t i = GRAMINA_ZERO; i < padding + 3 + loc.start_column; ++i) {
+    for (size_t i = 0; i < padding + 3 + loc.start_column; ++i) {
         str_append(&out, ' ');
     }
 
     str_cat(&out, &hi->underline);
 
-    for (size_t i = GRAMINA_ZERO; i <= loc.end_column - loc.start_column; ++i) {
+    for (size_t i = 0; i <= loc.end_column - loc.start_column; ++i) {
         str_append(&out, '~');
     }
 
@@ -129,12 +129,12 @@ Optional gramina_mk_opt_e_msg_c(int code, const char *msg) {
 void *__gramina_get_opt_value_ptr(size_t val_size, bool prev) {
     static Array(VoidPtr) stack = {
         .items = NULL,
-        .length = GRAMINA_ZERO,
-        .capacity = GRAMINA_ZERO,
+        .length = 0,
+        .capacity = 0,
     };
 
     if (prev) {
-        gramina_assert(stack.length > GRAMINA_ZERO, "no previous pointer\n");
+        gramina_assert(stack.length > 0, "no previous pointer\n");
 
         void *ptr = *array_last(VoidPtr, &stack);
         array_pop(VoidPtr, &stack);

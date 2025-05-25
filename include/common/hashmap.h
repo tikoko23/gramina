@@ -6,8 +6,8 @@
    GRAMINA_BLOCK_DECL(struct gramina_string_view _key) \
    GRAMINA_BLOCK_DECL(T *_value) \
    GRAMINA_BLOCK_DECL(struct gramina_hashmap __hashmap = (hashmap)) \
-   for (size_t __bi = GRAMINA_ZERO; __bi < __hashmap.n_buckets; ++__bi) \
-   for (size_t __ii = GRAMINA_ZERO; __ii < __hashmap.buckets[__bi].length \
+   for (size_t __bi = 0; __bi < __hashmap.n_buckets; ++__bi) \
+   for (size_t __ii = 0; __ii < __hashmap.buckets[__bi].length \
         && (_key = gramina_str_as_view(&__hashmap.buckets[__bi].items[__ii].key), \
             _value = __hashmap.buckets[__bi].items[__ii].value); \
         ++__ii) \

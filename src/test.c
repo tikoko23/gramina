@@ -32,7 +32,7 @@ static void highlight_char(const char *source, size_t line, size_t column) {
         .end_column = column,
     };
 
-    fseek(file, GRAMINA_ZERO, SEEK_END);
+    fseek(file, 0, SEEK_END);
     size_t file_size = ftell(file);
     rewind(file);
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 
     char *source = argv[1];
 
-    int status = GRAMINA_ZERO;
+    int status = 0;
 
     Stream file = mk_stream_open_c(source, "r");
     gramina_assert(stream_file_is_valid(&file));

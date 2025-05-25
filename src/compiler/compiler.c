@@ -81,14 +81,14 @@ static int llvm_init(CompilerState *S) {
     LLVMSetTarget(S->llvm_module, triple);
     LLVMDisposeMessage(triple);
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 static int llvm_deinit(CompilerState *S) {
     LLVMDisposeBuilder(S->llvm_builder);
     LLVMDisposeModule(S->llvm_module);
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 static StringView get_op(AstNodeType t) {
@@ -1621,14 +1621,14 @@ CompileResult gramina_compile(AstNode *root) {
             .status = GRAMINA_COMPILE_ERR_LLVM,
             .error = {
                 .description = mk_str_c("LLVM encountered an error during initialisation"),
-                .pos = { GRAMINA_ZERO, GRAMINA_ZERO, GRAMINA_ZERO },
+                .pos = { 0, 0, 0 },
             },
         };
     }
 
     array_append(GraminaScope, &S.scopes, mk_scope());
 
-    S.status = GRAMINA_ZERO;
+    S.status = 0;
     AstNode *cur = root;
     do {
         switch (cur->left->type) {
@@ -1679,7 +1679,7 @@ CompileResult gramina_compile(AstNode *root) {
             .status = GRAMINA_COMPILE_ERR_LLVM,
             .error = {
                 .description = mk_str_c("LLVM encountered an error during de-initialisation"),
-                .pos = { GRAMINA_ZERO, GRAMINA_ZERO, GRAMINA_ZERO },
+                .pos = { 0, 0, 0 },
             },
         };
     }

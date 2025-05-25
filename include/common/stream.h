@@ -7,7 +7,7 @@
 
 #include "common/str.h"
 
-// All functions in this header return GRAMINA_ZERO on success and `EOF` on EOF, including callbacks
+// All functions in this header return 0 on success and `EOF` on EOF, including callbacks
 
 struct gramina_stream;
 

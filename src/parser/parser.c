@@ -9,7 +9,7 @@
 #include "parser/ast.h"
 #include "parser/parser.h"
 
-#define SV_NULL ((StringView) { .length = GRAMINA_ZERO, .data = NULL })
+#define SV_NULL ((StringView) { .length = 0, .data = NULL })
 
 #undef slice
 #define sslice(T, this, start, end) gramina_ ## T ## _slice(this, start, end)
@@ -18,7 +18,7 @@
 #define CONSUME(S) ((S)->tokens->items[(S)->index++])
 #define SET_ERR(S, str) ((S)->has_error = true, (S)->error = (str))
 #define HAS_ERR(S) ((S)->has_error)
-#define CLEAR_ERR(S) ((S)->has_error ? str_free(&(S)->error) : GRAMINA_ZERO, (S)->has_error = false)
+#define CLEAR_ERR(S) ((S)->has_error ? str_free(&(S)->error) : 0, (S)->has_error = false)
 
 #define CHAINABLE_EXPRESSION_RULE(this, higher)                         \
     AstNode *value_node = higher(S);                                    \
@@ -80,7 +80,7 @@ static void print_parser_state(const ParserState *S);
 static AstNode *global_statement(ParserState *S);
 ParseResult gramina_parse(const Slice(GraminaToken) *tokens) {
     ParserState S = {
-        .index = GRAMINA_ZERO,
+        .index = 0,
         .tokens = tokens,
         .has_error = false,
     };

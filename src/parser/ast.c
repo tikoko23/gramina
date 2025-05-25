@@ -152,14 +152,14 @@ static int __gramina_ast_print(const AstNode *this, Stream *printer, Array(bool)
         return EOF;
     }
 
-    if (this == NULL && sibling_count == GRAMINA_ZERO) {
-        return GRAMINA_ZERO;
+    if (this == NULL && sibling_count == 0) {
+        return 0;
     }
 
     String out = mk_str();
 
-    if (strokes->length > GRAMINA_ZERO) {
-        Slice(bool) sl = array_slice(bool, strokes, GRAMINA_ZERO, strokes->length - 1);
+    if (strokes->length > 0) {
+        Slice(bool) sl = array_slice(bool, strokes, 0, strokes->length - 1);
 
         slice_foreach(bool, i, b, sl) {
             StringView sv = b
@@ -232,7 +232,7 @@ static int __gramina_ast_print(const AstNode *this, Stream *printer, Array(bool)
         return r2;
     }
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 int gramina_ast_print(const AstNode *this, struct gramina_stream *printer) {

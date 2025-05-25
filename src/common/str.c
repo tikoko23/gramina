@@ -22,15 +22,15 @@ static void __gramina_str_grow_at_least(String *this, size_t n) {
 
     this->data = gramina_realloc(this->data, this->capacity);
     if (this->data == NULL) {
-        this->capacity = GRAMINA_ZERO;
+        this->capacity = 0;
     }
 }
 
 String gramina_mk_str() {
     return (String) {
         .data = NULL,
-        .length = GRAMINA_ZERO,
-        .capacity = GRAMINA_ZERO,
+        .length = 0,
+        .capacity = 0,
     };
 }
 
@@ -91,11 +91,11 @@ String gramina_mk_str_sprintf(const StringView *_fmt, ...) {
     String fmt = sv_dup(_fmt);
     str_append(&fmt, '\0');
 
-    int n_bytes = vsnprintf(NULL, GRAMINA_ZERO, fmt.data, args);
+    int n_bytes = vsnprintf(NULL, 0, fmt.data, args);
 
     va_end(args);
 
-    if (n_bytes < GRAMINA_ZERO) {
+    if (n_bytes < 0) {
         str_free(&fmt);
         return mk_str();
     }
@@ -156,11 +156,11 @@ StringView gramina_str_as_view(const String *this) {
 }
 
 void gramina_str_clear(struct gramina_string *this) {
-    this->length = GRAMINA_ZERO;
+    this->length = 0;
 }
 
 void gramina_str_shrink(String *this) {
-    if (this->capacity == GRAMINA_ZERO) {
+    if (this->capacity == 0) {
         this->data = NULL;
     }
 
@@ -169,8 +169,8 @@ void gramina_str_shrink(String *this) {
     gramina_assert(this->data != NULL, "alloc failed");
 
     if (this->data == NULL) {
-        this->length = GRAMINA_ZERO;
-        this->capacity = GRAMINA_ZERO;
+        this->length = 0;
+        this->capacity = 0;
     } else {
         this->capacity = this->length;
     }
@@ -180,8 +180,8 @@ void gramina_str_free(String *this) {
     gramina_free(this->data);
 
     this->data = NULL;
-    this->length = GRAMINA_ZERO;
-    this->capacity = GRAMINA_ZERO;
+    this->length = 0;
+    this->capacity = 0;
 }
 
 char *gramina_str_to_cstr(const String *this) {
@@ -214,15 +214,15 @@ void gramina_str_reserve(String *this, size_t min_cap) {
     gramina_assert(this->data != NULL, "alloc failed");
 
     if (this->data == NULL) {
-        this->length = GRAMINA_ZERO;
-        this->capacity = GRAMINA_ZERO;
+        this->length = 0;
+        this->capacity = 0;
     } else {
         this->capacity = min_cap;
     }
 }
 
 void gramina_str_pop(String *this) {
-    if (this->length == GRAMINA_ZERO) {
+    if (this->length == 0) {
         return;
     }
 
@@ -269,11 +269,11 @@ int gramina_str_cmp(const String *this, const String *that) {
 }
 
 int gramina_sv_cmp(const StringView *this, const StringView *that) {
-    if (this->length == GRAMINA_ZERO && that->length == GRAMINA_ZERO) {
-        return GRAMINA_ZERO;
+    if (this->length == 0 && that->length == 0) {
+        return 0;
     }
 
-    for (size_t i = GRAMINA_ZERO; i < this->length && i < that->length; ++i) {
+    for (size_t i = 0; i < this->length && i < that->length; ++i) {
         char a = this->data[i];
         char b = that->data[i];
 
@@ -303,7 +303,7 @@ String gramina_str_expand_tabs(const StringView *this, size_t tab_size) {
 
     sv_foreach(_, ch, *this) {
         if (ch == '\t') {
-            for (size_t i = GRAMINA_ZERO; i < tab_size; ++i) {
+            for (size_t i = 0; i < tab_size; ++i) {
                 str_append(&out, ' ');
             }
         } else {
@@ -323,7 +323,7 @@ static char get_hex_digit(uint8_t n) {
 }
 
 static void uint_to_hex(uint64_t n, size_t n_bytes, String *out) {
-    for (int32_t i = n_bytes - 1; i >= GRAMINA_ZERO; --i) {
+    for (int32_t i = n_bytes - 1; i >= 0; --i) {
         uint8_t exposed = (n >> i * 8) & 0xFF;
 
         str_append(out, get_hex_digit(exposed / 16));
@@ -334,11 +334,11 @@ static void uint_to_hex(uint64_t n, size_t n_bytes, String *out) {
 static String format(const StringView *fmt, va_list args) {
     String out = mk_str();
 
-    size_t bs_count = GRAMINA_ZERO;
+    size_t bs_count = 0;
     size_t spec_start = (size_t)-1;
     size_t prec_start = (size_t)-1;
     sv_foreach(i, c, *fmt) {
-        if (c == '{' && bs_count % 2 == GRAMINA_ZERO) {
+        if (c == '{' && bs_count % 2 == 0) {
             spec_start = i + 1;
             continue;
         }
@@ -352,11 +352,11 @@ static String format(const StringView *fmt, va_list args) {
             ++bs_count;
             continue;
         } else {
-            for (size_t i = GRAMINA_ZERO; i < bs_count && c != '{'; ++i) {
+            for (size_t i = 0; i < bs_count && c != '{'; ++i) {
                 str_append(&out, '\\');
             }
 
-            bs_count = GRAMINA_ZERO;
+            bs_count = 0;
         }
 
         if (c == '}') {
@@ -374,69 +374,69 @@ static String format(const StringView *fmt, va_list args) {
             );
 
             StringView prec = prec_start == (size_t)-1
-                            ? (StringView) { .data = NULL, .length = GRAMINA_ZERO }
+                            ? (StringView) { .data = NULL, .length = 0 }
                             : sv_slice(fmt, prec_start, i);
 
-            if (sv_cmp_c(&spec, "c") == GRAMINA_ZERO) {
+            if (sv_cmp_c(&spec, "c") == 0) {
                 char arg = va_arg(args, int);
 
                 str_append(&out, arg);
 
-            } else if (sv_cmp_c(&spec, "s") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "s") == 0) {
                 const String *arg = va_arg(args, const String *);
 
                 str_cat(&out, arg);
-            } else if (sv_cmp_c(&spec, "so") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "so") == 0) {
                 String arg = va_arg(args, String);
 
                 str_cat(&out, &arg);
                 str_free(&arg);
 
-            } else if (sv_cmp_c(&spec, "sv") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "sv") == 0) {
                 const StringView *arg = va_arg(args, const StringView *);
 
                 str_cat_sv(&out, arg);
 
-            } else if (sv_cmp_c(&spec, "svo") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "svo") == 0) {
                 StringView arg = va_arg(args, StringView);
 
                 str_cat_sv(&out, &arg);
 
-            } else if (sv_cmp_c(&spec, "cstr") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "cstr") == 0) {
                 const char *arg = va_arg(args, const char *);
                 StringView view = mk_sv_c(arg);
 
                 str_cat_sv(&out, &view);
 
-            } else if (sv_cmp_c(&spec, "i32") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "i32") == 0) {
                 int32_t arg = va_arg(args, int32_t);
                 String str = i32_to_str(arg);
 
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "u32") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "u32") == 0) {
                 uint32_t arg = va_arg(args, uint32_t);
                 String str = u32_to_str(arg);
 
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "i64") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "i64") == 0) {
                 int64_t arg = va_arg(args, int32_t);
                 String str = i64_to_str(arg);
 
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "u64") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "u64") == 0) {
                 uint64_t arg = va_arg(args, uint32_t);
                 String str = u64_to_str(arg);
 
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "x32") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "x32") == 0) {
                 uint32_t arg = va_arg(args, uint32_t);
                 String str = mk_str_cap(8);
 
@@ -447,7 +447,7 @@ static String format(const StringView *fmt, va_list args) {
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "x64") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "x64") == 0) {
                 uint64_t arg = va_arg(args, uint64_t);
                 String str = mk_str_cap(16);
 
@@ -458,7 +458,7 @@ static String format(const StringView *fmt, va_list args) {
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "f32") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "f32") == 0) {
                 float arg = va_arg(args, double);
                 String str = prec.length > 0
                            ? f32_prec_to_str(arg, sv_to_u64(&prec))
@@ -467,7 +467,7 @@ static String format(const StringView *fmt, va_list args) {
                 str_cat(&out, &str);
                 str_free(&str);
 
-            } else if (sv_cmp_c(&spec, "f64") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "f64") == 0) {
                 double arg = va_arg(args, double);
                 String str = prec.length > 0
                            ? f64_prec_to_str(arg, sv_to_u64(&prec))
@@ -475,11 +475,11 @@ static String format(const StringView *fmt, va_list args) {
 
                 str_cat(&out, &str);
                 str_free(&str);
-            } else if (sv_cmp_c(&spec, "cpf") == GRAMINA_ZERO) {
+            } else if (sv_cmp_c(&spec, "cpf") == 0) {
                 char *cfmt = sv_to_cstr(&prec);
                 char buf[1024];
                 int written = vsnprintf(buf, (sizeof buf) - 1, cfmt, args);
-                if (written < GRAMINA_ZERO) {
+                if (written < 0) {
                     gramina_free(cfmt);
                     str_free(&out);
                     return mk_str();
@@ -575,7 +575,7 @@ void gramina_str_cat_vfmt(String *restrict this, const StringView *restrict fmt,
 }
 
 size_t gramina_count_digits(uint64_t x) {
-    size_t n = GRAMINA_ZERO;
+    size_t n = 0;
 
     do {
         x /= 10;
@@ -598,7 +598,7 @@ String gramina_i64_to_str(int64_t n) {
                 ? mk_str_c("-")
                 : mk_str();
 
-    if (n < GRAMINA_ZERO) {
+    if (n < 0) {
         n *= -1;
     }
 
@@ -643,7 +643,7 @@ String gramina_f32_prec_to_str(float x, int prec) {
 String gramina_f64_prec_to_str(double x, int prec) {
     char buf[64];
     int written = snprintf(buf, (sizeof buf), "%.*lf", prec, x);
-    if (written < GRAMINA_ZERO) {
+    if (written < 0) {
         return mk_str();
     }
 
@@ -652,11 +652,11 @@ String gramina_f64_prec_to_str(double x, int prec) {
 }
 
 int64_t gramina_sv_to_i64(const StringView *this) {
-    if (this->length == GRAMINA_ZERO) {
-        return GRAMINA_ZERO;
+    if (this->length == 0) {
+        return 0;
     }
 
-    bool negative = this->data[GRAMINA_ZERO] == '-';
+    bool negative = this->data[0] == '-';
 
     StringView view = negative
                     ? sv_slice(this, 1, this->length)
@@ -666,7 +666,7 @@ int64_t gramina_sv_to_i64(const StringView *this) {
 }
 
 uint64_t gramina_sv_to_u64(const StringView *this) {
-    uint64_t n = GRAMINA_ZERO;
+    uint64_t n = 0;
     sv_foreach(_, c, *this) {
         if (!isdigit(c)) {
             break;

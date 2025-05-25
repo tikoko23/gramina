@@ -46,14 +46,14 @@ static int __gramina_fs_reader(Stream *this, uint8_t *buf, size_t bufsize, size_
         return EIO;
     }
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 static int __gramina_fs_writer(Stream *this, const uint8_t *buf, size_t bufsize) {
     struct __gramina_fs_data *data = this->userdata;
     FILE *file = data->file;
 
-    fseek(file, GRAMINA_ZERO, SEEK_END);
+    fseek(file, 0, SEEK_END);
 
     size_t written = fwrite(buf, 1, bufsize, file);
     if (feof(file)) {
@@ -64,14 +64,14 @@ static int __gramina_fs_writer(Stream *this, const uint8_t *buf, size_t bufsize)
         return EIO;
     }
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 static int __gramina_fs_flusher(Stream *this) {
     struct __gramina_fs_data *data = this->userdata;
     fflush(data->file);
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 static int __gramina_fs_cleaner(Stream *this) {
@@ -84,7 +84,7 @@ static int __gramina_fs_cleaner(Stream *this) {
     gramina_free(this->userdata);
     this->userdata = NULL;
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 Stream gramina_mk_stream_file(FILE *f, bool readable, bool writable) {
@@ -99,7 +99,7 @@ Stream gramina_mk_stream_file(FILE *f, bool readable, bool writable) {
     *userdata = (struct __gramina_fs_data) {
         .file = f,
         .owned = false,
-        .read_pos = GRAMINA_ZERO,
+        .read_pos = 0,
     };
 
     this.userdata = userdata;
@@ -185,7 +185,7 @@ int gramina_stream_flush(Stream *this) {
         return this->flusher(this);
     }
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 int gramina_stream_write_sv(Stream *this, const StringView *sv) {
@@ -230,7 +230,7 @@ int gramina_stream_write_buf(Stream *this, const uint8_t *buf, size_t bufsize) {
 
     size_t available = this->max_buffered_bytes - this->out_buffer.length;
     if (available >= bufsize) {
-        int status = GRAMINA_ZERO;
+        int status = 0;
         StringView data = mk_sv_buf(buf, bufsize);
         str_cat_sv(&this->out_buffer, &data);
 
@@ -264,10 +264,10 @@ int gramina_stream_read_str(Stream *this, String *str, size_t max_bytes, size_t 
         read = &__read;
     }
 
-    *read = GRAMINA_ZERO;
+    *read = 0;
 
     int64_t read_left = max_bytes;
-    while (read_left > GRAMINA_ZERO) {
+    while (read_left > 0) {
         size_t bufsize = 128;
         if (read_left < 128) {
             bufsize = read_left;
@@ -276,14 +276,14 @@ int gramina_stream_read_str(Stream *this, String *str, size_t max_bytes, size_t 
         str_reserve(str, str->length + bufsize);
         size_t buf_idx = str->length;
 
-        for (size_t i = GRAMINA_ZERO; i < bufsize; ++i) {
+        for (size_t i = 0; i < bufsize; ++i) {
             str_append(str, '\0');
         }
 
         size_t r;
         int status = this->reader(this, (uint8_t *)str->data + buf_idx, bufsize, &r);
 
-        for (size_t i = GRAMINA_ZERO; i < (bufsize - r); ++i) {
+        for (size_t i = 0; i < (bufsize - r); ++i) {
             str_pop(str);
         }
 
@@ -295,7 +295,7 @@ int gramina_stream_read_str(Stream *this, String *str, size_t max_bytes, size_t 
         }
     }
 
-    return GRAMINA_ZERO;
+    return 0;
 }
 
 int gramina_stream_read_buf(Stream *this, uint8_t *buf, size_t max_bytes, size_t *read) {

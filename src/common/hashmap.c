@@ -23,9 +23,9 @@ static size_t get_bucket(const Hashmap *this, const StringView *str) {
 }
 
 Hashmap gramina_mk_hashmap(size_t n_buckets) {
-    if (n_buckets == GRAMINA_ZERO) {
+    if (n_buckets == 0) {
         return (Hashmap) {
-            .n_buckets = GRAMINA_ZERO,
+            .n_buckets = 0,
             .buckets = NULL,
             .object_freer = NULL,
         };
@@ -38,13 +38,13 @@ Hashmap gramina_mk_hashmap(size_t n_buckets) {
     this.buckets = gramina_malloc((sizeof *this.buckets) * n_buckets);
     if (!this.buckets) {
         return (Hashmap) {
-            .n_buckets = GRAMINA_ZERO,
+            .n_buckets = 0,
             .buckets = NULL,
             .object_freer = NULL,
         };
     }
 
-    for (size_t i = GRAMINA_ZERO; i < n_buckets; ++i) {
+    for (size_t i = 0; i < n_buckets; ++i) {
         this.buckets[i] = mk_array(HashmapItem);
     }
 
@@ -59,13 +59,13 @@ Hashmap gramina_hashmap_dup(const Hashmap *this) {
     that.buckets = gramina_malloc((sizeof *that.buckets) * that.n_buckets);
     if (!that.buckets) {
         return (Hashmap) {
-            .n_buckets = GRAMINA_ZERO,
+            .n_buckets = 0,
             .buckets = NULL,
             .object_freer = NULL,
         };
     }
 
-    for (size_t i = GRAMINA_ZERO; i < that.n_buckets; ++i) {
+    for (size_t i = 0; i < that.n_buckets; ++i) {
         that.buckets[i] = array_dup(HashmapItem, &this->buckets[i]);
     }
 
@@ -77,7 +77,7 @@ void gramina_hashmap_set(Hashmap *this, StringView key, void *value) {
     
     array_foreach_ref(HashmapItem, _, item, this->buckets[bucket]) {
         StringView this_key = str_as_view(&item->key);
-        if (sv_cmp(&this_key, &key) == GRAMINA_ZERO) {
+        if (sv_cmp(&this_key, &key) == 0) {
             if (this->object_freer) {
                 this->object_freer(item->value);
             }
@@ -102,7 +102,7 @@ void *gramina_hashmap_get(const Hashmap *this, StringView key) {
     
     array_foreach_ref(HashmapItem, _, item, this->buckets[bucket]) {
         StringView this_key = str_as_view(&item->key);
-        if (sv_cmp(&this_key, &key) == GRAMINA_ZERO) {
+        if (sv_cmp(&this_key, &key) == 0) {
             return item->value;
         }
     }
@@ -115,7 +115,7 @@ void gramina_hashmap_remove(Hashmap *this, StringView key) {
     
     array_foreach_ref(HashmapItem, idx, item, this->buckets[bucket]) {
         StringView this_key = str_as_view(&item->key);
-        if (sv_cmp(&this_key, &key) == GRAMINA_ZERO) {
+        if (sv_cmp(&this_key, &key) == 0) {
             if (this->object_freer) {
                 this->object_freer(item->value);
             }
@@ -129,7 +129,7 @@ void gramina_hashmap_remove(Hashmap *this, StringView key) {
 }
 
 void gramina_hashmap_free(Hashmap *this) {
-    for (size_t i = GRAMINA_ZERO; i < this->n_buckets; ++i) {
+    for (size_t i = 0; i < this->n_buckets; ++i) {
         array_foreach(HashmapItem, _, el, this->buckets[i]) {
             if (this->object_freer) {
                 this->object_freer(el.value);
