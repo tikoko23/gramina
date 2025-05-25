@@ -1,4 +1,4 @@
-fn is_prime(ulong n) -> bool {
+fn isPrime(ulong n) -> bool {
     if n < 2u {
         return false;
     }

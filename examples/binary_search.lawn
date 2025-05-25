@@ -1,0 +1,22 @@
+fn binarySearch(long& array, ulong l, ulong r, long x) -> ulong {
+    if l >= r {
+        if @(array + l) == x {
+            return l;
+        }
+
+        return \$(-1);
+    }
+
+    ulong mid = (l + r) / 2u;
+    long value = @(array + mid);
+
+    if value == x {
+        return mid;
+    }
+
+    if value < x {
+        return binarySearch(array, mid + 1u, r, x);
+    }
+
+    return binarySearch(array, l, mid, x);
+}
