@@ -7,10 +7,10 @@ struct Data {
 };
 
 // Test C compatibility
-struct Data test(void);
+struct Data yeah(void);
 
 int main() {
-    struct Data result = test();
+    struct Data result = yeah();
 
     printf(".a = %d\n.b = %ld\n.scale = %f\n", result.a, result.b, result.scale);
 }
