@@ -952,6 +952,8 @@ static AstNode *typename(ParserState *S) {
                 ast_node_free(cur);
                 return NULL;
             }
+
+            break;
         default:
             loop = false;
             break;

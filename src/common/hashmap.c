@@ -72,9 +72,19 @@ Hashmap gramina_hashmap_dup(const Hashmap *this) {
     return that;
 }
 
+size_t gramina_hashmap_count(const Hashmap *this) {
+    size_t count = 0;
+
+    for (size_t i = 0; i < this->n_buckets; ++i) {
+        count += this->buckets[i].length;
+    }
+
+    return count;
+}
+
 void gramina_hashmap_set(Hashmap *this, StringView key, void *value) {
     size_t bucket = get_bucket(this, &key);
-    
+
     array_foreach_ref(HashmapItem, _, item, this->buckets[bucket]) {
         StringView this_key = str_as_view(&item->key);
         if (sv_cmp(&this_key, &key) == 0) {
@@ -99,7 +109,7 @@ void gramina_hashmap_set(Hashmap *this, StringView key, void *value) {
 
 void *gramina_hashmap_get(const Hashmap *this, StringView key) {
     size_t bucket = get_bucket(this, &key);
-    
+
     array_foreach_ref(HashmapItem, _, item, this->buckets[bucket]) {
         StringView this_key = str_as_view(&item->key);
         if (sv_cmp(&this_key, &key) == 0) {
@@ -112,7 +122,7 @@ void *gramina_hashmap_get(const Hashmap *this, StringView key) {
 
 void gramina_hashmap_remove(Hashmap *this, StringView key) {
     size_t bucket = get_bucket(this, &key);
-    
+
     array_foreach_ref(HashmapItem, idx, item, this->buckets[bucket]) {
         StringView this_key = str_as_view(&item->key);
         if (sv_cmp(&this_key, &key) == 0) {

@@ -690,3 +690,27 @@ int gramina_print_cfmt(const char *fmt, ...) {
 
     return written;
 }
+
+int gramina_err_cfmt(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    String out = str_vcfmt(fmt, args);
+    va_end(args);
+
+    int written = fwrite(out.data, 1, out.length, stderr);
+    str_free(&out);
+
+    return written;
+}
+
+int gramina_fprint_cfmt(FILE *stream, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    String out = str_vcfmt(fmt, args);
+    va_end(args);
+
+    int written = fwrite(out.data, 1, out.length, stream);
+    str_free(&out);
+
+    return written;
+}

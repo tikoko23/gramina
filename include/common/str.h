@@ -111,6 +111,8 @@ uint64_t gramina_sv_to_u64(const struct gramina_string_view *this);
 size_t gramina_count_digits(uint64_t x);
 
 int gramina_print_cfmt(const char *fmt, ...);
+int gramina_err_cfmt(const char *fmt, ...);
+int gramina_fprint_cfmt(FILE *stream, const char *fmt, ...);
 
 #endif
 #include "gen/common/str.h"

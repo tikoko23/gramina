@@ -9,6 +9,6 @@ CC=clang
 $BINARY "examples/$EXAMPLE.lawn"
 mv "./out.ll" "examples/$EXAMPLE.ll"
 
-clang -o "examples/$EXAMPLE.out" "examples/$EXAMPLE.ll" "examples/$EXAMPLE.c"
+clang -o "examples/$EXAMPLE.out" "$CFLAGS" "examples/$EXAMPLE.ll" "examples/$EXAMPLE.c"
 
 exec "examples/$EXAMPLE.out"

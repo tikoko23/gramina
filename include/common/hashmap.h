@@ -39,6 +39,8 @@ struct gramina_hashmap {
 struct gramina_hashmap gramina_mk_hashmap(size_t n_buckets);
 struct gramina_hashmap gramina_hashmap_dup(const struct gramina_hashmap *this);
 
+size_t gramina_hashmap_count(const struct gramina_hashmap *this);
+
 void gramina_hashmap_set(struct gramina_hashmap *this, struct gramina_string_view key, void *value);
 void *gramina_hashmap_get(const struct gramina_hashmap *this, struct gramina_string_view key);
 void gramina_hashmap_remove(struct gramina_hashmap *this, struct gramina_string_view key);
