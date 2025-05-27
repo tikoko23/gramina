@@ -202,6 +202,20 @@ static void err_cannot_call(CompilerState *S, const Type *type, TokenPosition po
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
+static void err_cannot_have_member(CompilerState *S, const Type *type, TokenPosition pos) {
+    puts_err(S, str_cfmt("value of type '{so}' cannot have member", type_to_str(type)), pos);
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+static void err_no_field(CompilerState *S, const Type *type, const StringView *field, TokenPosition pos) {
+    const Type *indexed = type->kind == GRAMINA_TYPE_POINTER
+                        ? type->pointer_type
+                        : type;
+
+    puts_err(S, str_cfmt("type '{so}' does not have '{sv}' field", type_to_str(indexed), field), pos);
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
 static void err_insufficient_args(CompilerState *S, size_t wants, size_t got, TokenPosition pos) {
     puts_err(S, str_cfmt("function call expected {u64} argumen{cstr}, got {u64}", wants, wants == 1 ? "t" : "ts", got), pos);
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
@@ -210,6 +224,12 @@ static void err_insufficient_args(CompilerState *S, size_t wants, size_t got, To
 static void err_excess_args(CompilerState *S, size_t wants, TokenPosition pos) {
     puts_err(S, str_cfmt("function call expected {u64} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"), pos);
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+static void dbg_print_val(const char *fmt, LLVMValueRef val) {
+    char *val_str = LLVMPrintValueToString(val);
+    printf(fmt, val_str);
+    LLVMDisposeMessage(val_str);
 }
 
 static Value primitive_convert(CompilerState *S, const Value *from, const Type *to) {
@@ -255,14 +275,42 @@ static Value primitive_convert(CompilerState *S, const Value *from, const Type *
     };
 }
 
+static void store(CompilerState *S, const Value *value, LLVMValueRef into) {
+    if (value->type.kind == GRAMINA_TYPE_STRUCT) {
+        LLVMBuildMemCpy(
+            S->llvm_builder,
+            into, 8,
+            value->llvm, 8,
+            LLVMSizeOf(value->type.llvm)
+        );
+    } else {
+        LLVMBuildStore(S->llvm_builder, value->llvm, into);
+    }
+}
+
 static void try_load_inplace(CompilerState *S, Value *val) {
     if (val->class != CLASS_ALLOCA) {
         return;
     }
 
+    if (val->type.kind == GRAMINA_TYPE_STRUCT) {
+        Value new_val = {
+            .llvm = val->llvm,
+            .class = CLASS_LVALUE,
+            .type = type_dup(&val->type),
+            .lvalue_ptr = val->llvm,
+        };
+
+        value_free(val);
+
+        *val = new_val;
+
+        return;
+    }
+
     LLVMValueRef loaded = LLVMBuildLoad2(S->llvm_builder, val->type.llvm, val->llvm, "");
 
-    Value new_val = (Value) {
+    Value new_val = {
         .llvm = loaded,
         .lvalue_ptr = val->llvm,
         .class = CLASS_LVALUE,
@@ -277,6 +325,15 @@ static void try_load_inplace(CompilerState *S, Value *val) {
 static Value try_load(CompilerState *S, const Value *val) {
     if (val->class != CLASS_ALLOCA) {
         return value_dup(val);
+    }
+
+    if (val->type.kind == GRAMINA_TYPE_STRUCT) {
+        return (Value) {
+            .llvm = val->llvm,
+            .class = CLASS_LVALUE,
+            .type = type_dup(&val->type),
+            .lvalue_ptr = val->llvm,
+        };
     }
 
     LLVMValueRef loaded = LLVMBuildLoad2(S->llvm_builder, val->type.llvm, val->llvm, "");
@@ -643,18 +700,28 @@ static Value address_of(CompilerState *S, LLVMValueRef function, AstNode *this) 
     Value operand = expression(S, function, this->left);
 
     switch (operand.class) {
-    case CLASS_ALLOCA:
-        return (Value) {
+    case CLASS_ALLOCA: {
+        Value ret = {
             .class = CLASS_RVALUE,
             .type = mk_pointer_type(&operand.type),
             .llvm = operand.llvm,
         };
-    case CLASS_LVALUE:
-        return (Value) {
+
+        value_free(&operand);
+
+        return ret;
+    }
+    case CLASS_LVALUE: {
+        Value ret = {
             .class = CLASS_RVALUE,
             .type = mk_pointer_type(&operand.type),
             .llvm = operand.lvalue_ptr,
         };
+
+        value_free(&operand);
+
+        return ret;
+    }
     default:
         puts_err(S, str_cfmt("taking address of rvalue of type '{so}'", type_to_str(&operand.type)), this->pos);
         return invalid_value();
@@ -663,7 +730,14 @@ static Value address_of(CompilerState *S, LLVMValueRef function, AstNode *this) 
 
 static Value assign(CompilerState *S, LLVMValueRef function, AstNode *this) {
     Value target = expression(S, function, this->left);
+
+    push_reflection(S, &target.type);
+    ++S->reflection_depth;
+
     Value value = expression(S, function, this->right);
+
+    --S->reflection_depth;
+    pop_reflection(S);
 
     LLVMValueRef ptr;
     switch (target.class) {
@@ -680,6 +754,8 @@ static Value assign(CompilerState *S, LLVMValueRef function, AstNode *this) {
         return invalid_value();
     }
 
+    try_load_inplace(S, &value);
+
     if (!type_can_convert(S, &value.type, &target.type)) {
         err_implicit_conv(S, &value.type, &target.type, this->pos);
         value_free(&target);
@@ -687,13 +763,10 @@ static Value assign(CompilerState *S, LLVMValueRef function, AstNode *this) {
         return invalid_value();
     }
 
-    if (!type_is_same(&value.type, &target.type)) {
-        Value converted = convert(S, &value, &target.type);
-        value_free(&value);
-        value = converted;
-    }
+    convert_inplace(S, &value, &target.type);
 
-    LLVMBuildStore(S->llvm_builder, value.llvm, ptr);
+    store(S, &value, ptr);
+    // LLVMBuildStore(S->llvm_builder, value.llvm, ptr);
 
     Value ret = value_dup(&value);
     ret.class = CLASS_RVALUE;
@@ -707,16 +780,26 @@ static Value assign(CompilerState *S, LLVMValueRef function, AstNode *this) {
 static Value deref(CompilerState *S, LLVMValueRef function, AstNode *this) {
     Value operand = expression(S, function, this->left);
 
-    if (operand.class == CLASS_ALLOCA) {
-        Value loaded = try_load(S, &operand);
-        value_free(&operand);
-        operand = loaded;
-    }
+    try_load_inplace(S, &operand);
 
     if (operand.type.kind != GRAMINA_TYPE_POINTER) {
         err_deref(S, &operand.type, this->pos);
         value_free(&operand);
         return invalid_value();
+    }
+
+    bool ptr_to_struct = operand.type.pointer_type->kind == GRAMINA_TYPE_STRUCT;
+    if (ptr_to_struct) {
+        Value ret = {
+            .type = type_dup(operand.type.pointer_type),
+            .llvm = operand.llvm,
+            .class = CLASS_LVALUE,
+            .lvalue_ptr = operand.llvm,
+        };
+
+        value_free(&operand);
+
+        return ret;
     }
 
     Type *final_type = operand.type.pointer_type;
@@ -1020,6 +1103,7 @@ static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
     }
 
     Type *fn_type = &func->type;
+    bool sret = fn_type->return_type->kind == GRAMINA_TYPE_STRUCT;
 
     size_t params_capacity = fn_type->param_types.length + 1;
     AstNode *params[params_capacity]; // The array should not have a size of 0
@@ -1052,7 +1136,10 @@ static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
     LLVMValueRef llvm_args[params_capacity];
 
     arguments[0] = invalid_value();
-    llvm_args[0] = NULL;
+
+    llvm_args[0] = sret
+                 ? LLVMBuildAlloca(S->llvm_builder, fn_type->return_type->llvm, "")
+                 : NULL;
 
     for (size_t i = 1; i < params_capacity; ++i) {
         Type *expected = fn_type->param_types.items + i - 1;
@@ -1089,13 +1176,15 @@ static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
         S->llvm_builder,
         fn_type->llvm,
         func->llvm,
-        llvm_args + 1,
-        params_capacity - 1,
+        llvm_args + !sret, // Include the first param if sret
+        params_capacity - !sret,
         ""
     );
 
     Value ret = {
-        .llvm = result,
+        .llvm = sret
+              ? llvm_args[0]
+              : result,
         .class = CLASS_RVALUE,
         .type = type_dup(fn_type->return_type),
     };
@@ -1104,6 +1193,63 @@ static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
         value_free(arguments + i);
     }
 
+    return ret;
+}
+
+static Value member(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value lhs = expression(S, function, this->left);
+
+    bool ptr_to_struct = lhs.type.kind == GRAMINA_TYPE_POINTER
+                      && lhs.type.pointer_type->kind == GRAMINA_TYPE_STRUCT;
+
+    // Pointer to struct and struct is pretty much the same thing in LLVM
+    if (lhs.type.kind != GRAMINA_TYPE_STRUCT && !ptr_to_struct) {
+        err_cannot_have_member(S, &lhs.type, this->pos);
+        value_free(&lhs);
+        return invalid_value();
+    }
+
+    if (ptr_to_struct) {
+        try_load_inplace(S, &lhs);
+    }
+
+    Type *struct_type = ptr_to_struct
+                      ? lhs.type.pointer_type
+                      : &lhs.type;
+
+    StringView rhs = str_as_view(&this->right->value.identifier);
+    StructField *field = hashmap_get(&struct_type->fields, rhs);
+    if (!field) {
+        err_no_field(S, &lhs.type, &rhs, this->pos);
+        value_free(&lhs);
+
+        return invalid_value();
+    }
+
+    size_t offset = field->index;
+
+    LLVMValueRef result = LLVMBuildInBoundsGEP2(
+        S->llvm_builder,
+        struct_type->llvm,
+        lhs.llvm,
+        (LLVMValueRef[2]){
+            LLVMConstInt(LLVMInt32Type(), 0, 0), // Pick the struct the pointer is pointing to directly
+            LLVMConstInt(LLVMInt32Type(), offset, 0),
+        }, 2, ""
+    );
+
+    LLVMValueRef loaded = field->type.kind == GRAMINA_TYPE_STRUCT 
+                        ? result
+                        : LLVMBuildLoad2(S->llvm_builder, field->type.llvm, result, "");
+
+    Value ret = {
+        .type = type_dup(&field->type),
+        .llvm = loaded,
+        .class = CLASS_LVALUE,
+        .lvalue_ptr = result,
+    };
+
+    value_free(&lhs);
     return ret;
 }
 
@@ -1202,6 +1348,8 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
         return binary_logic(S, function, this);
     case GRAMINA_AST_OP_CALL:
         return call(S, function, this);
+    case GRAMINA_AST_OP_MEMBER:
+        return member(S, function, this);
     default:
         err_illegal_node(S, this);
         return invalid_value();
@@ -1209,6 +1357,14 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
 }
 
 static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    StringView name = str_as_view(&this->left->value.identifier);
+
+    Scope *scope = CURRENT_SCOPE(S);
+    if (hashmap_get(&scope->identifiers, name)) {
+        err_redeclaration(S, &name, this->left->pos);
+        return;
+    }
+
     Type ident_type = type_from_ast_node(S, this->left->left);
     if (S->has_error) {
         return;
@@ -1218,8 +1374,17 @@ static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) 
     Value value = {};
 
     if (initialised) {
+        push_reflection(S, &ident_type);
+        ++S->reflection_depth;
+
         value = expression(S, function, this->left->right);
+        try_load_inplace(S, &value);
+
+        --S->reflection_depth;
+        pop_reflection(S);
+
         if (!value_is_valid(&value)) {
+            type_free(&ident_type);
             return;
         }
 
@@ -1230,26 +1395,10 @@ static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) 
             return;
         }
 
-        if (!type_is_same(&value.type, &ident_type)) {
-            Value coerced = convert(S, &value, &ident_type);
-            value_free(&value);
-            value = coerced;
-        }
+        convert_inplace(S, &value, &ident_type);
     }
 
-    Scope *scope = CURRENT_SCOPE(S);
-    StringView name = str_as_view(&this->left->value.identifier);
-
-    if (hashmap_get(&scope->identifiers, name)) {
-        err_redeclaration(S, &name, this->left->pos);
-
-        if (initialised) {
-            type_free(&ident_type);
-            value_free(&value);
-        }
-
-        return;
-    }
+    scope = CURRENT_SCOPE(S); // `gramina_realloc` may invalidate the previous pointer
 
     Identifier *ident = gramina_malloc(sizeof *ident);
     *ident = (Identifier) {
@@ -1262,7 +1411,8 @@ static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) 
     gramina_free(cname);
 
     if (initialised) {
-        LLVMBuildStore(S->llvm_builder, value.llvm, ident->llvm);
+        store(S, &value, ident->llvm);
+        // LLVMBuildStore(S->llvm_builder, value.llvm, ident->llvm);
     }
 
     hashmap_set(&scope->identifiers, name, ident);
@@ -1304,9 +1454,23 @@ static void return_statement(CompilerState *S, LLVMValueRef function, AstNode *t
         exp = ret;
     }
 
+    Type *ret_type = &REFLECT(reflection_index)->type;
     try_load_inplace(S, &exp);
+    convert_inplace(S, &exp, ret_type);
 
-    LLVMBuildRet(S->llvm_builder, exp.llvm);
+    if (ret_type->kind == GRAMINA_TYPE_STRUCT) {
+        LLVMBuildMemCpy(
+            S->llvm_builder,
+            LLVMGetParam(function, 0), 8,
+            exp.llvm, 8,
+            LLVMSizeOf(exp.type.llvm)
+        );
+
+        LLVMBuildRetVoid(S->llvm_builder);
+
+    } else {
+        LLVMBuildRet(S->llvm_builder, exp.llvm);
+    }
 
     --S->reflection_depth;
 
@@ -1538,6 +1702,7 @@ static bool check_tail_return(AstNode *this) {
 
 static void function_def(CompilerState *S, AstNode *this) {
     Type fn_type = type_from_ast_node(S, this->left);
+    bool sret = fn_type.return_type->kind == GRAMINA_TYPE_STRUCT;
 
     StringView name = str_as_view(&this->value.identifier);
 
@@ -1549,6 +1714,17 @@ static void function_def(CompilerState *S, AstNode *this) {
 
     char *name_cstr = sv_to_cstr(&name);
     LLVMValueRef func = LLVMAddFunction(S->llvm_module, name_cstr, fn_type.llvm);
+
+    if (sret) {
+        LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
+            LLVMGetGlobalContext(),
+            LLVMGetEnumAttributeKindForName("sret", 4),
+            fn_type.return_type->llvm 
+        );
+
+        LLVMAddAttributeAtIndex(func, 1, sret_attr);
+    }
+
     gramina_free(name_cstr);
 
     Identifier *fn_ident = gramina_malloc(sizeof *fn_ident);
@@ -1577,19 +1753,34 @@ static void function_def(CompilerState *S, AstNode *this) {
     Array(String) param_names = collect_param_names(this->left->left);
 
     array_foreach_ref(_GraminaType, i, type, fn_type.param_types) {
-        LLVMValueRef temp = LLVMGetParam(func, i);
+        LLVMValueRef temp = LLVMGetParam(func, i + sret);
 
         String *param_name = &param_names.items[i];
-        char *cparam_name = str_to_cstr(param_name);
 
-        LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cparam_name);
-        gramina_free(cparam_name);
+        LLVMValueRef llvm_param;
+        if (type->kind != GRAMINA_TYPE_STRUCT) {
+            char *cparam_name = str_to_cstr(param_name);
 
-        LLVMBuildStore(S->llvm_builder, temp, allocated);
+            LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cparam_name);
+            gramina_free(cparam_name);
+
+            LLVMBuildStore(S->llvm_builder, temp, allocated);
+            llvm_param = allocated;
+        } else {
+            LLVMAttributeRef byval_attr = LLVMCreateTypeAttribute(
+                LLVMGetGlobalContext(),
+                LLVMGetEnumAttributeKindForName("byval", 5),
+                type->llvm
+            );
+
+            LLVMAddAttributeAtIndex(func, i + sret + 1, byval_attr); // 1 indexed
+
+            llvm_param = temp;
+        }
 
         Identifier *param = gramina_malloc(sizeof *param);
         *param = (Identifier) {
-            .llvm = allocated,
+            .llvm = llvm_param,
             .type = type_dup(type),
             .kind = GRAMINA_IDENT_KIND_VAR,
         };
@@ -1613,6 +1804,22 @@ static void function_def(CompilerState *S, AstNode *this) {
     }
 
     pop_reflection(S);
+}
+
+static void struct_def(CompilerState *S, AstNode *this) {
+    Type struct_type = type_from_ast_node(S, this);
+
+    Identifier *ident = gramina_malloc(sizeof *ident);
+    *ident = (Identifier) {
+        .llvm = NULL,
+        .type = struct_type,
+        .kind = GRAMINA_IDENT_KIND_TYPE,
+    };
+
+    StringView name = str_as_view(&ident->type.struct_name);
+
+    Scope *scope = CURRENT_SCOPE(S);
+    hashmap_set(&scope->identifiers, name, ident);
 }
 
 CompileResult gramina_compile(AstNode *root) {
@@ -1642,6 +1849,9 @@ CompileResult gramina_compile(AstNode *root) {
         case GRAMINA_AST_FUNCTION_DEF:
         case GRAMINA_AST_FUNCTION_DECLARATION:
             function_def(&S, cur->left);
+            break;
+        case GRAMINA_AST_STRUCT_DEF:
+            struct_def(&S, cur->left);
             break;
         default:
             break;

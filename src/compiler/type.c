@@ -1,3 +1,4 @@
+#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include <llvm-c/Core.h>
@@ -15,8 +16,9 @@ GRAMINA_IMPLEMENT_ARRAY(_GraminaType);
 
 #define BUILTIN_PRIMITIVE(pr, _llvm) (Type) { .kind = GRAMINA_TYPE_PRIMITIVE, .primitive = GRAMINA_PRIMITIVE_ ## pr, .llvm = LLVM ## _llvm ## Type(), }
 
-static void struct_field_free(void *field) {
-    type_free(field);
+static void struct_field_free(void *_field) {
+    StructField *field = _field;
+    type_free(&field->type);
     gramina_free(field);
 }
 
@@ -127,8 +129,11 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
             .kind = GRAMINA_TYPE_FUNCTION,
         };
 
+        Type return_type = type_from_ast_node(S, this->right);
+        bool sret = return_type.kind == GRAMINA_TYPE_STRUCT;
+
         typ.return_type = gramina_malloc(sizeof *typ.return_type);
-        *typ.return_type = type_from_ast_node(S, this->right);
+        *typ.return_type = return_type;
 
         typ.param_types = mk_array(_GraminaType);
 
@@ -144,12 +149,25 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
             } while ((current = current->right));
         }
 
-        LLVMTypeRef params[typ.param_types.length];
+        LLVMTypeRef params[typ.param_types.length + sret];
         array_foreach_ref(_GraminaType, i, t, typ.param_types) {
-            params[i] = t->llvm;
+            LLVMTypeRef llvm_type = t->kind == GRAMINA_TYPE_STRUCT
+                                  ? LLVMPointerType(t->llvm, 0)
+                                  : t->llvm;
+
+            params[i + sret] = llvm_type;
         }
 
-        typ.llvm = LLVMFunctionType(typ.return_type->llvm, params, typ.param_types.length, false);
+        if (sret) {
+            // This doesn't change the gramina representation
+            params[0] = LLVMPointerType(typ.return_type->llvm, 0);
+        }
+
+        LLVMTypeRef llvm_ret = sret
+                             ? LLVMVoidType()
+                             : typ.return_type->llvm;
+
+        typ.llvm = LLVMFunctionType(llvm_ret, params, typ.param_types.length + sret, false);
 
         return typ;
     }
@@ -176,37 +194,41 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
         return typ;
     }
     case GRAMINA_AST_STRUCT_DEF: {
-        const AstNode *old_this = this;
-
+        const AstNode *cur = this;
         size_t field_count = 0;
-        while ((this = this->right)) {
+        while ((cur = cur->right)) {
             ++field_count;
         }
 
-        this = old_this;
-
-        Hashmap fields = mk_hashmap(
-            field_count <= 16
-                ? field_count
-                : 16
-        );
+        Hashmap fields = mk_hashmap(16);
+        LLVMTypeRef llvm_fields[field_count];
 
         fields.object_freer = struct_field_free;
 
-        while ((this = this->right)) {
-            StringView field_name = str_as_view(&this->left->value.identifier);
-            Type *field_type = gramina_malloc(sizeof *field_type);
-            *field_type = type_from_ast_node(S, this->left->left);
+        cur = this;
+        size_t index = 0;
+        while ((cur = cur->right)) {
+            StringView field_name = str_as_view(&cur->left->value.identifier);
+            StructField *field = gramina_malloc(sizeof *field);
+            field->type = type_from_ast_node(S, cur->left->left);
+            field->index = index;
 
-            hashmap_set(&fields, field_name, field_type);
+            llvm_fields[index++] = field->type.llvm;
+
+            hashmap_set(&fields, field_name, field);
         }
 
-        this = old_this;
+        char *cname = str_to_cstr(&this->left->value.identifier);
+        LLVMTypeRef type = LLVMStructCreateNamed(LLVMGetGlobalContext(), cname);
+        gramina_free(cname);
+
+        LLVMStructSetBody(type, llvm_fields, field_count, false);
 
         return (Type) {
             .kind = GRAMINA_TYPE_STRUCT,
             .struct_name = str_dup(&this->left->value.identifier),
             .fields = fields,
+            .llvm = type,
         };
     }
 
@@ -354,13 +376,14 @@ bool gramina_type_is_same(const Type *a, const Type *b) {
             return false;
         }
 
-        hashmap_foreach(Type, name, atype, a->fields) {
-            Type *btype = hashmap_get(&b->fields, name);
-            if (!btype) {
+        hashmap_foreach(StructField, name, field_a, a->fields) {
+            StructField *field_b = hashmap_get(&b->fields, name);
+            if (!field_b) {
                 return false;
             }
 
-            if (!type_is_same(atype, btype)) {
+            if (field_a->index != field_b->index
+             || !type_is_same(&field_a->type, &field_b->type)) {
                 return false;
             }
         }
@@ -523,11 +546,12 @@ Type gramina_type_dup(const Type *this) {
         typ.fields = mk_hashmap(this->fields.n_buckets);
         typ.fields.object_freer = this->fields.object_freer;
 
-        hashmap_foreach(Type, key, value, this->fields) {
-            Type *field_type = gramina_malloc(sizeof *field_type);
-            *field_type = type_dup(value);
+        hashmap_foreach(StructField, key, value, this->fields) {
+            StructField *field = gramina_malloc(sizeof *field);
+            field->type = type_dup(&value->type);
+            field->index = value->index;
 
-            hashmap_set(&typ.fields, key, field_type);
+            hashmap_set(&typ.fields, key, field);
         }
 
         return typ;

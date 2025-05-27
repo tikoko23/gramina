@@ -1,0 +1,41 @@
+/**
+ * This example does not implement anything meaningful.
+ * Its sole purpose is to test struct semantics.
+ */
+
+struct Data {
+    int a;
+    long b;
+    float scale;
+}
+
+// Test return
+fn calculate() -> Data {
+    Data d;
+    d.a = 23;
+    d.b = 2;
+    d.scale = 0.5;
+
+    return d;
+}
+
+// Test struct as parameter / return
+fn merge(Data& a, Data b) -> Data {
+    Data out;
+    out.a = (@a).a + b.a; // struct as temporary expression 
+    out.b = a.b + b.b; // implicit pointer dereferencing
+    out.scale = a.scale * b.scale;
+
+    return out;
+}
+
+// Test everything else
+fn yeah() -> Data {
+    Data result = calculate();
+    Data existing;
+    existing.a = 14;
+    existing.b = 21;
+    existing.scale = 3;
+
+    return merge(&result, existing);
+}

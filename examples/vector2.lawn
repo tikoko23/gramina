@@ -1,0 +1,30 @@
+struct Vector2 {
+    float x;
+    float y;
+}
+
+struct Player {
+    Vector2 position;
+    Vector2 velocity;
+}
+
+fn add(Vector2 a, Vector2 b) -> Vector2 {
+    Vector2 result;
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
+
+    return result;
+}
+
+fn scale(Vector2 v, float s) -> Vector2 {
+    Vector2 result;
+    result.x = v.x * s;
+    result.y = v.y * s;
+
+    return result;
+}
+
+fn move(Player& self, float dt) {
+    Vector2 d_vel = scale(self.velocity, dt);
+    self.position = add(self.position, d_vel);
+}

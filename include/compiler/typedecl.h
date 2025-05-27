@@ -77,6 +77,10 @@ struct gramina_coercion_result {
     bool is_right_promoted;
 };
 
+struct gramina_struct_field {
+    struct gramina_type type;
+    size_t index;
+};
 
 #endif
 #include "gen/compiler/typedecl.h"
