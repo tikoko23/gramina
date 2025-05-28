@@ -1,8 +1,14 @@
 #define GRAMINA_NO_NAMESPACE
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "common/array.h"
 #include "common/error.h"
 #include "common/hashmap.h"
+#include "common/init.h"
+#include "common/log.h"
 
 #include "compiler/compiler.h"
 
@@ -56,22 +62,48 @@ static void highlight_char(const char *source, size_t line, size_t column) {
 }
 
 int main(int argc, char **argv) {
-    if (argc <= 1) {
-        fprintf(stderr, "gramina-test: missing file argument\n");
+    char *source = NULL;
+    size_t excess_file_args = 0;
+    for (size_t i = 1; i < argc; ++i) {
+        char *arg = argv[i];
+        if (strcmp(arg, "-v") == 0
+         || strcmp(arg, "--verbose") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_VERBOSE;
+            continue;
+        }
+
+        if (source) {
+            ++excess_file_args;
+            continue;
+        }
+
+        source = arg;
+    }
+
+    init();
+    atexit(cleanup);
+
+    if (!source) {
+        elog_fmt("Missing file argument\n");
         return -1;
     }
 
-    char *source = argv[1];
+    if (excess_file_args) {
+        wlog_fmt("Ignoring {sz} extra argument{cstr} provided\n", excess_file_args, excess_file_args == 1 ? "" : "s");
+    }
 
     int status = 0;
 
     Stream file = mk_stream_open_c(source, "r");
-    gramina_assert(stream_file_is_valid(&file));
+    if (!stream_file_is_valid(&file)) {
+        elog_fmt("Cannot open file '{cstr}': {cstr}\n", source, strerror(errno));
+        return -1;
+    }
 
-    Stream printer = mk_stream_file(stdout, false, true);
-    gramina_assert(stream_file_is_valid(&printer));
+    Stream verbose_printer = mk_stream_log(GRAMINA_LOG_LEVEL_VERBOSE);
+    gramina_assert(stream_is_valid(&verbose_printer));
 
-    puts("==== LEXER BEGIN ====");
+    ilog_fmt("Entering the lexer phase...\n");
 
     LexResult lex_result = lex(&file);
     if (lex_result.status != GRAMINA_LEX_ERR_NONE) {
@@ -91,8 +123,9 @@ int main(int argc, char **argv) {
         status = lex_result.status;
 
         stream_free(&file);
-        stream_free(&printer);
+        stream_free(&verbose_printer);
         lex_result_free(&lex_result);
+
         return status;
     }
 
@@ -100,46 +133,39 @@ int main(int argc, char **argv) {
 
     slice_foreach(GraminaToken, _, t, tokens_s) {
         StringView rule = token_type_to_str(t.type);
-        String contents = token_contents(&t);
-        printf(
-            "position (%2zu, %2zu), rule: %.*s, value: '%.*s'\n",
+        vlog_fmt(
+            "position ({cpf:%2zu}, {cpf:%2zu}), rule: {sv}, value: '{so}'\n",
             t.pos.line,
             t.pos.column,
-            (int)rule.length,
-            rule.data,
-            (int)contents.length,
-            contents.data
+            &rule,
+            token_contents(&t)
         );
-
-        str_free(&contents);
     }
 
-    puts("==== LEXER END ====");
-    puts("==== PARSER BEGIN ====");
+    ilog_fmt("Entering the parsing phase...\n");
 
     ParseResult presult = parse(&tokens_s);
     AstNode *root = presult.root;
 
     if (!root) {
-        fprintf(
-            stderr,
-            "(%zu:%zu) %.*s\n",
+        elog_fmt(
+            "({sz}:{sz}) {s}\n",
             presult.error.pos.line,
             presult.error.pos.column,
-            (int)presult.error.description.length,
-            presult.error.description.data
+            &presult.error.description
         );
 
         highlight_char(source, presult.error.pos.line, presult.error.pos.column);
 
         status = 1;
-        goto cleanup;
+        goto _cleanup;
     }
 
-    ast_print(root, &printer);
-    puts("==== PARSER END ====");
+    stream_write_cstr(&verbose_printer, "AST dump:\n");
+    ast_print(root, &verbose_printer);
 
-    puts("==== COMPILER BEGIN ====");
+    ilog_fmt("Entering the compilation phase...\n");
+
     CompileResult cresult = compile(root);
     if (cresult.status) {
         CompileError *err = &cresult.error;
@@ -162,15 +188,15 @@ int main(int argc, char **argv) {
         str_free(&cresult.error.description);
     }
 
-    puts("==== COMPILER END ====");
+    ilog_fmt("Compilation finished!\n");
 
-    cleanup:
+    _cleanup:
 
     lex_result_free(&lex_result);
     parse_result_free(&presult);
 
     stream_free(&file);
-    stream_free(&printer);
+    stream_free(&verbose_printer);
 
     return status;
 }

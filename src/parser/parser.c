@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "common/array.h"
+#include "common/log.h"
 
 #include "parser/ast.h"
 #include "parser/parser.h"
@@ -107,6 +108,8 @@ ParseResult gramina_parse(const Slice(GraminaToken) *tokens) {
     }
 
     if (S.has_error) {
+        elog_fmt("Parser: {s}\n", &S.error);
+
         ast_node_free(root);
         root = NULL;
 

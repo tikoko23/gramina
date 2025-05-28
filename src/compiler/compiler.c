@@ -8,6 +8,7 @@
 #include <llvm-c/Types.h>
 
 #include "common/hashmap.h"
+#include "common/log.h"
 
 #include "compiler/compiler.h"
 #include "compiler/cstate.h"
@@ -125,6 +126,8 @@ static void putcs_err(CompilerState *S, const char *err, TokenPosition pos) {
         return;
     }
 
+    elog_fmt("Compilation: {cstr}\n", err);
+
     S->has_error = true;
     S->error = (CompileError) {
         .pos = pos,
@@ -137,6 +140,8 @@ static void puts_err(CompilerState *S, String err, TokenPosition pos) {
         str_free(&err);
         return;
     }
+
+    elog_fmt("Compilation: {s}\n", &err);
 
     S->has_error = true;
     S->error = (CompileError) {
@@ -217,12 +222,12 @@ static void err_no_field(CompilerState *S, const Type *type, const StringView *f
 }
 
 static void err_insufficient_args(CompilerState *S, size_t wants, size_t got, TokenPosition pos) {
-    puts_err(S, str_cfmt("function call expected {u64} argumen{cstr}, got {u64}", wants, wants == 1 ? "t" : "ts", got), pos);
+    puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got {sz}", wants, wants == 1 ? "t" : "ts", got), pos);
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
 static void err_excess_args(CompilerState *S, size_t wants, TokenPosition pos) {
-    puts_err(S, str_cfmt("function call expected {u64} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"), pos);
+    puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"), pos);
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
@@ -1719,7 +1724,7 @@ static void function_def(CompilerState *S, AstNode *this) {
         LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
             LLVMGetGlobalContext(),
             LLVMGetEnumAttributeKindForName("sret", 4),
-            fn_type.return_type->llvm 
+            fn_type.return_type->llvm
         );
 
         LLVMAddAttributeAtIndex(func, 1, sret_attr);
@@ -1736,6 +1741,8 @@ static void function_def(CompilerState *S, AstNode *this) {
 
     Scope *parent_scope = array_last(GraminaScope, &S->scopes);
     hashmap_set(&parent_scope->identifiers, name, fn_ident);
+
+    vlog_fmt("Registering function '{sv}'\n", &name);
 
     if (this->type == GRAMINA_AST_FUNCTION_DECLARATION) {
         return;
@@ -1820,6 +1827,8 @@ static void struct_def(CompilerState *S, AstNode *this) {
 
     Scope *scope = CURRENT_SCOPE(S);
     hashmap_set(&scope->identifiers, name, ident);
+
+    vlog_fmt("Registering struct '{sv}'\n", &name);
 }
 
 CompileResult gramina_compile(AstNode *root) {
@@ -1874,15 +1883,11 @@ CompileResult gramina_compile(AstNode *root) {
         };
     }
 
-    char *ir = LLVMPrintModuleToString(S.llvm_module);
-    printf("%s\n", ir);
-    LLVMDisposeMessage(ir);
-
     char *err;
     LLVMPrintModuleToFile(S.llvm_module, "out.ll", &err);
 
     if (err) {
-        fprintf(stderr, "Error: %s\n", err);
+        elog_fmt("{cstr}\n", err);
         LLVMDisposeMessage(err);
     }
 
