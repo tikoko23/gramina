@@ -10,6 +10,10 @@ typedef struct {
     gramina_log_callback func;
 } LogEntry;
 
+typedef struct {
+    LogLevel level;
+} LogStreamInfo;
+
 GRAMINA_DECLARE_ARRAY(LogEntry, static);
 GRAMINA_IMPLEMENT_ARRAY(LogEntry, static);
 
@@ -45,6 +49,33 @@ bool gramina_remove_log_callback(LogCallback func) {
     }
 
     return false;
+}
+
+static int log_stream_cleaner(Stream *this) {
+    gramina_free(this->userdata);
+
+    return 0;
+}
+
+static int log_stream_writer(Stream *this, const uint8_t *buf, size_t bufsize) {
+    LogStreamInfo *info = this->userdata;
+    log_fmt(info->level, "{svo}", mk_sv_buf(buf, bufsize));
+
+    return 0;
+}
+
+Stream gramina_mk_stream_log(LogLevel level) {
+    LogStreamInfo *info = gramina_malloc(sizeof *info);
+    *info = (LogStreamInfo) {
+        .level = level,
+    };
+
+    Stream base = mk_stream();
+    base.userdata = info;
+    base.cleaner = log_stream_cleaner,
+    base.writer = log_stream_writer;
+
+    return base;
 }
 
 void gramina_log_vsvfmt(LogLevel level, const StringView *fmt, va_list args) {

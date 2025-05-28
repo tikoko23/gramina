@@ -19,6 +19,7 @@ Stream gramina_mk_stream() {
         .writer = NULL,
         .flusher = NULL,
         .cleaner = NULL,
+        .validator = NULL,
         .userdata = NULL,
         // .max_buffered_bytes = 1024,
         // .out_buffer = mk_str(),
@@ -87,6 +88,18 @@ static int __gramina_fs_cleaner(Stream *this) {
     return 0;
 }
 
+static bool __gramina_fs_validator(const Stream *this) {
+    struct __gramina_fs_data *ud = this->userdata;
+
+    return ud != NULL
+        && ud->file != NULL
+        && this->flusher == __gramina_fs_flusher
+        && this->cleaner == __gramina_fs_cleaner
+        && (this->reader == __gramina_fs_reader
+         || this->writer == __gramina_fs_writer
+        );
+}
+
 Stream gramina_mk_stream_file(FILE *f, bool readable, bool writable) {
     Stream this = mk_stream();
 
@@ -94,6 +107,7 @@ Stream gramina_mk_stream_file(FILE *f, bool readable, bool writable) {
     this.writer = writable ? __gramina_fs_writer : NULL;
     this.flusher = __gramina_fs_flusher;
     this.cleaner = __gramina_fs_cleaner;
+    this.validator = __gramina_fs_validator;
 
     struct __gramina_fs_data *userdata = gramina_malloc(sizeof (struct __gramina_fs_data));
     *userdata = (struct __gramina_fs_data) {
@@ -132,6 +146,10 @@ Stream gramina_mk_stream_open(StringView filename, StringView mode) {
     str_free(&c_name);
     str_free(&c_mode);
 
+    if (!file) {
+        return (Stream) {};
+    }
+
     Stream this = gramina_mk_stream_file(file, readable, writable);
     struct __gramina_fs_data *userdata = this.userdata;
     userdata->owned = true;
@@ -168,6 +186,14 @@ bool gramina_stream_is_readable(const Stream *this) {
 
 bool gramina_stream_is_writable(const Stream *this) {
     return this->writer != NULL;
+}
+
+bool gramina_stream_is_valid(const Stream *this) {
+    if (!this->validator) {
+        return true;
+    }
+
+    return this->validator(this);
 }
 
 int gramina_stream_flush(Stream *this) {
@@ -310,14 +336,7 @@ int gramina_stream_read_byte(struct gramina_stream *this, uint8_t *byte) {
     return stream_read_buf(this, byte, 1, NULL);
 }
 
+// Old API, will be deprecated
 bool gramina_stream_file_is_valid(Stream *this) {
-    struct __gramina_fs_data *ud = this->userdata;
-
-    return ud != NULL
-        && ud->file != NULL
-        && this->flusher == __gramina_fs_flusher
-        && this->cleaner == __gramina_fs_cleaner
-        && (this->reader == __gramina_fs_reader
-         || this->writer == __gramina_fs_writer
-        );
+    return __gramina_fs_validator(this);
 }

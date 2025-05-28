@@ -13,7 +13,7 @@
  *     gramina_global_log_level = GRAMINA_LOG_LEVEL_NONE + 1;
  */
 enum gramina_log_level {
-    GRAMINA_LOG_LEVEL_VERBOSE,
+    GRAMINA_LOG_LEVEL_VERBOSE = 0,
     GRAMINA_LOG_LEVEL_INFO,
     GRAMINA_LOG_LEVEL_WARN,
     GRAMINA_LOG_LEVEL_ERROR,
@@ -39,6 +39,8 @@ void gramina_elog_fmt(const char *fmt, ...); // ERROR
 
 void gramina_register_log_callback(gramina_log_callback func, void *userdata);
 bool gramina_remove_log_callback(gramina_log_callback func);
+
+struct gramina_stream gramina_mk_stream_log(enum gramina_log_level level);
 
 void __gramina_log_cleanup(); /* ignore */
 

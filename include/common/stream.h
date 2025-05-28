@@ -15,29 +15,14 @@ typedef int (*gramina_stream_reader)(struct gramina_stream *this, uint8_t *buf, 
 typedef int (*gramina_stream_writer)(struct gramina_stream *this, const uint8_t *buf, size_t bufsize);
 typedef int (*gramina_stream_flusher)(struct gramina_stream *this);
 typedef int (*gramina_stream_cleaner)(struct gramina_stream *this); // Cleanup and dealloc
-
-#ifdef GRAMINA_NO_NAMESPACE
-
-typedef gramina_stream_reader StreamReader;
-typedef gramina_stream_writer StreamWriter;
-typedef gramina_stream_flusher StreamFlusher;
-typedef gramina_stream_cleaner StreamCleaner;
-
-#endif
-#ifdef GRAMINA_WANT_TAGLESS
-
-typedef gramina_stream_reader GraminaStreamReader;
-typedef gramina_stream_writer GraminaStreamWriter;
-typedef gramina_stream_flusher GraminaStreamFlusher;
-typedef gramina_stream_cleaner GraminaStreamCleaner;
-
-#endif
+typedef bool (*gramina_stream_validator)(const struct gramina_stream *this);
 
 struct gramina_stream {
     gramina_stream_reader reader;
     gramina_stream_writer writer;
     gramina_stream_flusher flusher;
     gramina_stream_cleaner cleaner;
+    gramina_stream_validator validator;
 
     void *userdata;
     // TODO: proper buffering
@@ -55,6 +40,7 @@ void gramina_stream_free(struct gramina_stream *this);
 
 bool gramina_stream_is_readable(const struct gramina_stream *this);
 bool gramina_stream_is_writable(const struct gramina_stream *this);
+bool gramina_stream_is_valid(const struct gramina_stream *this);
 
 int gramina_stream_flush(struct gramina_stream *this);
 
@@ -73,4 +59,22 @@ int gramina_stream_read_byte(struct gramina_stream *this, uint8_t *byte);
 bool gramina_stream_file_is_valid(struct gramina_stream *this);
 
 #endif
+
+#ifdef GRAMINA_NO_NAMESPACE
+
+typedef gramina_stream_reader StreamReader;
+typedef gramina_stream_writer StreamWriter;
+typedef gramina_stream_flusher StreamFlusher;
+typedef gramina_stream_cleaner StreamCleaner;
+
+#endif
+#ifdef GRAMINA_WANT_TAGLESS
+
+typedef gramina_stream_reader GraminaStreamReader;
+typedef gramina_stream_writer GraminaStreamWriter;
+typedef gramina_stream_flusher GraminaStreamFlusher;
+typedef gramina_stream_cleaner GraminaStreamCleaner;
+
+#endif
+
 #include "gen/common/stream.h"

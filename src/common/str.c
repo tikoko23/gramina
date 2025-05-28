@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "common/def.h"
+#include "common/log.h"
 #include "common/mem.h"
 #include "common/str.h"
 
@@ -408,6 +409,13 @@ static String format(const StringView *fmt, va_list args) {
 
                 str_cat_sv(&out, &view);
 
+            } else if (sv_cmp_c(&spec, "sz") == 0) {
+                size_t arg = va_arg(args, size_t);
+                String str = u64_to_str(arg);
+
+                str_cat(&out, &str);
+                str_free(&str);
+
             } else if (sv_cmp_c(&spec, "i32") == 0) {
                 int32_t arg = va_arg(args, int32_t);
                 String str = i32_to_str(arg);
@@ -490,6 +498,8 @@ static String format(const StringView *fmt, va_list args) {
                 gramina_free(cfmt);
 
             } else {
+                wlog_fmt("Unrecognised format specifier '{sv}'\n", &spec);
+
                 str_free(&out);
                 return mk_str();
             }
