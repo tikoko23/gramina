@@ -12,7 +12,7 @@ Gramina is developed, built and tested on GNU/Linux.
 Support for Windows and MacOS is considered, and will be worked on in the future.
 
 # Building
-Ensure `libLLVM-19.so` is available on the system library path.
+Ensure `libLLVM-19.so` is available in the system library path. The target LLVM version may change in the future.
 The CMake configuration defines the following targets:
 - `gracommon` (static library)
 - `graparse` (static library)

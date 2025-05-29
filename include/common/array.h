@@ -84,6 +84,7 @@ GRAMINA_ARRAY_TAGLESS_TYPEDEFS(T) \
 __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array(); \
 __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_capacity(size_t cap); \
 __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_prefilled(size_t n, T v); \
+__VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_c(const T *carray, size_t n); \
 __VA_ARGS__ struct gramina_array(T) gramina_ ## T ## _array_dup(const struct gramina_array(T) *this); \
 \
 __VA_ARGS__ struct gramina_slice(T) gramina_ ## T ## _array_slice(const struct gramina_array(T) *this, size_t start, size_t end); \
@@ -153,6 +154,18 @@ __VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_prefilled(size_t 
     return this; \
 } \
 \
+__VA_ARGS__ struct gramina_array(T) gramina_mk_ ## T ## _array_c(const T *carray, size_t n) { \
+    struct gramina_array(T) this = gramina_mk_ ## T ## _array_capacity(n); \
+    \
+    for (size_t i = 0; i < n; ++i) { \
+        this.items[i] = carray[i]; \
+    } \
+    \
+    this.length = n; \
+    \
+    return this; \
+} \
+\
 __VA_ARGS__ struct gramina_array(T) gramina_ ## T ## _array_dup(const struct gramina_array(T) *this) { \
     struct gramina_array(T) that = gramina_mk_ ## T ## _array_capacity(this->capacity); \
     gramina_array_foreach_ref(T, i, v, *this) { \
@@ -215,12 +228,11 @@ __VA_ARGS__ void gramina_ ## T ## _array_reserve(struct gramina_array(T) *this, 
         return; \
     } \
     \
+    this->capacity = min_cap; \
     this->items = gramina_realloc(this->items, this->capacity * sizeof (T)); \
     if (this->items == NULL) { \
         this->length = 0; \
         this->capacity = 0; \
-    } else { \
-        this->capacity = min_cap; \
     } \
 } \
 \
@@ -267,6 +279,7 @@ __VA_ARGS__ T *gramina_ ## T ## _array_last(const struct gramina_array(T) *this)
 #  define mk_array(T) gramina_mk_ ## T ## _array()
 #  define mk_array_capacity(T, cap) gramina_mk_ ## T ## _array_capacity(cap)
 #  define mk_array_prefilled(T, n, v) gramina_mk_ ## T ## _array_prefilled(n, v)
+#  define mk_array_c(T, carray, n) gramina_mk_ ## T ## _array_c(carray, n)
 #  define array_dup(T, this) gramina_ ## T ## _array_dup(this)
 #  define slice(T, this, start, end) gramina_ ## T ## _slice(this, start, end)
 #  define array_slice(T, this, start, end) gramina_ ## T ## _array_slice(this, start, end)
