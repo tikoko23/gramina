@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <llvm-c/Core.h>
+#include <llvm-c/Error.h>
+
 #include "common/array.h"
 #include "common/error.h"
 #include "common/hashmap.h"
@@ -190,6 +193,12 @@ int main(int argc, char **argv) {
 
     ilog_fmt("Compilation finished!\n");
 
+    char *err;
+    if (LLVMPrintModuleToFile(cresult.module, "out.ll", &err)) {
+        elog_fmt("Error while writing 'out.ll': {cstr}\n", err);
+        LLVMDisposeErrorMessage(err);
+    }
+
     _cleanup:
 
     lex_result_free(&lex_result);
@@ -197,6 +206,8 @@ int main(int argc, char **argv) {
 
     stream_free(&file);
     stream_free(&verbose_printer);
+
+    LLVMDisposeModule(cresult.module);
 
     return status;
 }

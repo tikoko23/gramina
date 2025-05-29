@@ -1,6 +1,8 @@
 #ifndef __GRAMINA_PARSER_COMPILER_H
 #define __GRAMINA_PARSER_COMPILER_H
 
+#include <llvm-c/Types.h>
+
 #include "common/array.h"
 #include "common/str.h"
 #include "common/stream.h"
@@ -27,6 +29,7 @@ struct gramina_compile_error {
 struct gramina_compile_result {
     enum gramina_compile_error_code status;
     struct gramina_compile_error error;
+    LLVMModuleRef module;
 };
 
 struct gramina_string_view gramina_compile_error_code_to_str(enum gramina_compile_error_code e);

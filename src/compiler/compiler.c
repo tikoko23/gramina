@@ -87,7 +87,6 @@ static int llvm_init(CompilerState *S) {
 
 static int llvm_deinit(CompilerState *S) {
     LLVMDisposeBuilder(S->llvm_builder);
-    LLVMDisposeModule(S->llvm_module);
 
     return 0;
 }
@@ -1876,19 +1875,12 @@ CompileResult gramina_compile(AstNode *root) {
         array_free(_GraminaReflection, &S.reflection);
 
         llvm_deinit(&S);
+        LLVMDisposeModule(S.llvm_module);
 
         return (CompileResult) {
             .status = S.status,
             .error = S.error,
         };
-    }
-
-    char *err;
-    LLVMPrintModuleToFile(S.llvm_module, "out.ll", &err);
-
-    if (err) {
-        elog_fmt("{cstr}\n", err);
-        LLVMDisposeMessage(err);
     }
 
     gramina_assert(S.scopes.length == 1, "got: %zu", S.scopes.length);
@@ -1898,6 +1890,7 @@ CompileResult gramina_compile(AstNode *root) {
 
     S.status = llvm_deinit(&S);
     if (S.status) {
+        LLVMDisposeModule(S.llvm_module);
         return (CompileResult) {
             .status = GRAMINA_COMPILE_ERR_LLVM,
             .error = {
@@ -1908,6 +1901,7 @@ CompileResult gramina_compile(AstNode *root) {
     }
 
     return (CompileResult) {
+        .module = S.llvm_module,
         .status = GRAMINA_COMPILE_ERR_NONE,
     };
 }
