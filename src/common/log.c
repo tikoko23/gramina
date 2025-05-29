@@ -1,5 +1,12 @@
 #define GRAMINA_NO_NAMESPACE
 
+// Determines if specs such as '{so}' will be guaranteed to run even when
+// no log output is produced. This is added as a flag since it may affect
+// performance.
+#ifndef GRAMINA_UNSAFE_LOG_FMT
+#  define GRAMINA_UNSAFE_LOG_FMT false
+#endif
+
 #include <stdarg.h>
 
 #include "common/array.h"
@@ -79,13 +86,19 @@ Stream gramina_mk_stream_log(LogLevel level) {
 }
 
 void gramina_log_vsvfmt(LogLevel level, const StringView *fmt, va_list args) {
-    if (level < gramina_global_log_level || level > GRAMINA_LOG_LEVEL_NONE) {
+    // This compile-time flag is explained by the comment at the start of the file 
+    if (GRAMINA_UNSAFE_LOG_FMT && (level < gramina_global_log_level)) {
         return;
     }
 
     bool urgent = level == GRAMINA_LOG_LEVEL_NONE;
 
     String out = str_vfmt(fmt, args);
+
+    if (level < gramina_global_log_level) {
+        str_free(&out);
+        return;
+    }
 
     FILE *stream;
     switch (level) {
