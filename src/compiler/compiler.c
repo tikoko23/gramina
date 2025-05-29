@@ -1095,30 +1095,43 @@ static Value binary_logic(CompilerState *S, LLVMValueRef function, AstNode *this
     return ret;
 }
 
-static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    // TODO: operator overloading
+static bool convert_nodes_to_params(CompilerState *S, Identifier *func, Value *arguments, AstNode **params, size_t n_params) {
+    const Type *fn_type = &func->type;
+    LLVMValueRef llvm_handle = func->llvm;
 
-    StringView func_name = str_as_view(&this->left->value.identifier);
-    Identifier *func = resolve(S, &func_name);
+    for (size_t i = 0; i < n_params; ++i) {
+        Type *expected = fn_type->param_types.items + i;
 
-    if (func->kind != GRAMINA_IDENT_KIND_FUNC) {
-        err_cannot_call(S, &func->type, this->left->pos);
-        return invalid_value();
+        AstNode *param = params[i];
+
+        push_reflection(S, expected);
+        ++S->reflection_depth;
+
+        arguments[i] = expression(S, llvm_handle, param);
+
+        --S->reflection_depth;
+        pop_reflection(S);
+
+        Type *got = &arguments[i].type;
+
+        if (!type_can_convert(S, got, expected)) {
+            err_implicit_conv(S, got, expected, param->pos);
+            return false;
+        }
+
+        convert_inplace(S, arguments + i, expected);
+        try_load_inplace(S, arguments + i);
     }
 
-    Type *fn_type = &func->type;
-    bool sret = fn_type->return_type->kind == GRAMINA_TYPE_STRUCT;
+    return true;
+}
 
-    size_t params_capacity = fn_type->param_types.length + 1;
-    AstNode *params[params_capacity]; // The array should not have a size of 0
-
-    params[0] = NULL;
-
+static bool collect_params(CompilerState *S, AstNode *this, AstNode **params, size_t n_params) {
     AstNode *current = this->right;
-    for (size_t i = 1; i < params_capacity; ++i) {
+    for (size_t i = 0; i < n_params; ++i) {
         if (!current) {
-            err_insufficient_args(S, params_capacity - 1, i - 1, this->pos);
-            return invalid_value();
+            err_insufficient_args(S, n_params, i, this->pos);
+            return false;
         }
 
         if (current->type == GRAMINA_AST_EXPRESSION_LIST) {
@@ -1131,69 +1144,81 @@ static Value call(CompilerState *S, LLVMValueRef function, AstNode *this) {
     }
 
     if (current && current->parent->type == GRAMINA_AST_EXPRESSION_LIST
-     || params_capacity == 1 && this->right != NULL) {
-        err_excess_args(S, params_capacity - 1, this->pos);
-        return invalid_value();
+     || n_params == 0 && this->right != NULL) {
+        err_excess_args(S, n_params, this->pos);
+        return false;
     }
 
-    Value arguments[params_capacity];
-    LLVMValueRef llvm_args[params_capacity];
+    return true;
+}
 
-    arguments[0] = invalid_value();
+static Value call(CompilerState *S, Identifier *func, Value *args, size_t n_params) {
+    bool is_sret = func->type.return_type->kind == GRAMINA_TYPE_STRUCT;
 
-    llvm_args[0] = sret
-                 ? LLVMBuildAlloca(S->llvm_builder, fn_type->return_type->llvm, "")
+    // In all cases, `llvm_args[0]` is reserved for sret
+    LLVMValueRef llvm_args[n_params + 1];
+
+    llvm_args[0] = is_sret
+                 ? LLVMBuildAlloca(S->llvm_builder, func->type.return_type->llvm, "")
                  : NULL;
 
-    for (size_t i = 1; i < params_capacity; ++i) {
-        Type *expected = fn_type->param_types.items + i - 1;
-
-        AstNode *param = params[i];
-
-        push_reflection(S, expected);
-        ++S->reflection_depth;
-
-        arguments[i] = expression(S, function, param);
-
-        --S->reflection_depth;
-        pop_reflection(S);
-
-        Type *got = &arguments[i].type;
-
-        if (!type_can_convert(S, got, expected)) {
-            err_implicit_conv(S, got, expected, param->pos);
-
-            for (size_t j = 1; j <= i; ++j) {
-                value_free(arguments + j);
-            }
-
-            return invalid_value();
-        }
-
-        convert_inplace(S, arguments + i, expected);
-        try_load_inplace(S, arguments + i);
-
-        llvm_args[i] = arguments[i].llvm;
+    for (size_t i = 1; i < n_params + 1; ++i) {
+        llvm_args[i] = args[i - 1].llvm;
     }
 
     LLVMValueRef result = LLVMBuildCall2(
         S->llvm_builder,
-        fn_type->llvm,
+        func->type.llvm,
         func->llvm,
-        llvm_args + !sret, // Include the first param if sret
-        params_capacity - !sret,
+        llvm_args + !is_sret, // Include the first param if sret
+        n_params + is_sret,
         ""
     );
 
     Value ret = {
-        .llvm = sret
+        .llvm = is_sret
               ? llvm_args[0]
               : result,
         .class = CLASS_RVALUE,
-        .type = type_dup(fn_type->return_type),
+        .type = type_dup(func->type.return_type),
     };
 
-    for (size_t i = 1; i < params_capacity; ++i) {
+    return ret;
+}
+
+static Value fn_call_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    // TODO: operator overloading
+
+    StringView func_name = str_as_view(&this->left->value.identifier);
+
+    Identifier *func = resolve(S, &func_name);
+
+    if (!func) {
+        err_undeclared_ident(S, &func_name, this->left->pos);
+        return invalid_value();
+    }
+
+    if (func->kind != GRAMINA_IDENT_KIND_FUNC) {
+        err_cannot_call(S, &func->type, this->left->pos);
+        return invalid_value();
+    }
+
+    size_t n_params = func->type.param_types.length;
+    size_t params_capacity = n_params + 1;
+    AstNode *params[params_capacity]; // The array should not have a size of 0
+
+    if (!collect_params(S, this, params, n_params)) {
+        return invalid_value();
+    }
+
+    Value arguments[params_capacity];
+    if (!convert_nodes_to_params(S, func, arguments, params, n_params)) {
+        return invalid_value();
+    }
+
+    Value ret = call(S, func, arguments, n_params);
+
+    for (size_t i = 0; i < n_params; ++i) {
         value_free(arguments + i);
     }
 
@@ -1242,7 +1267,7 @@ static Value member(CompilerState *S, LLVMValueRef function, AstNode *this) {
         }, 2, ""
     );
 
-    LLVMValueRef loaded = field->type.kind == GRAMINA_TYPE_STRUCT 
+    LLVMValueRef loaded = field->type.kind == GRAMINA_TYPE_STRUCT
                         ? result
                         : LLVMBuildLoad2(S->llvm_builder, field->type.llvm, result, "");
 
@@ -1351,7 +1376,11 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
     case GRAMINA_AST_OP_LOGICAL_AND:
         return binary_logic(S, function, this);
     case GRAMINA_AST_OP_CALL:
-        return call(S, function, this);
+        if (this->left->type == GRAMINA_AST_IDENTIFIER) {
+            return fn_call_expr(S, function, this);
+        }
+
+        return invalid_value();
     case GRAMINA_AST_OP_MEMBER:
         return member(S, function, this);
     default:
@@ -1704,61 +1733,12 @@ static bool check_tail_return(AstNode *this) {
     return false;
 }
 
-static void function_def(CompilerState *S, AstNode *this) {
-    Type fn_type = type_from_ast_node(S, this->left);
-    bool sret = fn_type.return_type->kind == GRAMINA_TYPE_STRUCT;
-
-    StringView name = str_as_view(&this->value.identifier);
-
-    if (hashmap_get(&CURRENT_SCOPE(S)->identifiers, name)) {
-        err_redeclaration(S, &name, this->left->pos);
-        type_free(&fn_type);
-        return;
-    }
-
-    char *name_cstr = sv_to_cstr(&name);
-    LLVMValueRef func = LLVMAddFunction(S->llvm_module, name_cstr, fn_type.llvm);
-
-    if (sret) {
-        LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
-            LLVMGetGlobalContext(),
-            LLVMGetEnumAttributeKindForName("sret", 4),
-            fn_type.return_type->llvm
-        );
-
-        LLVMAddAttributeAtIndex(func, 1, sret_attr);
-    }
-
-    gramina_free(name_cstr);
-
-    Identifier *fn_ident = gramina_malloc(sizeof *fn_ident);
-    *fn_ident = (Identifier) {
-        .kind = GRAMINA_IDENT_KIND_FUNC,
-        .type = fn_type,
-        .llvm = func,
-    };
-
-    Scope *parent_scope = array_last(GraminaScope, &S->scopes);
-    hashmap_set(&parent_scope->identifiers, name, fn_ident);
-
-    vlog_fmt("Registering function '{sv}'\n", &name);
-
-    if (this->type == GRAMINA_AST_FUNCTION_DECLARATION) {
-        return;
-    }
-
-    bool has_tail_return = check_tail_return(this);
-
-    push_reflection(S, fn_type.return_type);
-
-    LLVMBasicBlockRef body = LLVMAppendBasicBlock(func, "entry");
-    LLVMPositionBuilderAtEnd(S->llvm_builder, body);
-
-    Scope *self_scope = push_scope(S);
-
+static void register_params(CompilerState *S, LLVMValueRef func, const Type *fn_type, bool sret, AstNode *this) {
     Array(String) param_names = collect_param_names(this->left->left);
 
-    array_foreach_ref(_GraminaType, i, type, fn_type.param_types) {
+    Scope *self_scope = CURRENT_SCOPE(S);
+
+    array_foreach_ref(_GraminaType, i, type, fn_type->param_types) {
         LLVMValueRef temp = LLVMGetParam(func, i + sret);
 
         String *param_name = &param_names.items[i];
@@ -1797,6 +1777,64 @@ static void function_def(CompilerState *S, AstNode *this) {
     }
 
     array_free(String, &param_names);
+}
+
+static void function_def(CompilerState *S, AstNode *this) {
+    Type fn_type = type_from_ast_node(S, this->left);
+    bool sret = fn_type.return_type->kind == GRAMINA_TYPE_STRUCT;
+
+    StringView name = str_as_view(&this->value.identifier);
+
+    if (hashmap_get(&CURRENT_SCOPE(S)->identifiers, name)) {
+        err_redeclaration(S, &name, this->left->pos);
+        type_free(&fn_type);
+        return;
+    }
+
+    char *name_cstr = sv_to_cstr(&name);
+    LLVMValueRef func = LLVMAddFunction(S->llvm_module, name_cstr, fn_type.llvm);
+
+    if (sret) {
+        LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
+            LLVMGetGlobalContext(),
+            LLVMGetEnumAttributeKindForName("sret", 4),
+            fn_type.return_type->llvm
+        );
+
+        LLVMAddAttributeAtIndex(func, 1, sret_attr);
+    }
+
+    gramina_free(name_cstr);
+
+    Identifier *fn_ident = gramina_malloc(sizeof *fn_ident);
+    *fn_ident = (Identifier) {
+        .kind = GRAMINA_IDENT_KIND_FUNC,
+        .type = fn_type,
+        .llvm = func,
+        .attributes = this->value.attributes,
+    };
+
+    this->value.attributes = mk_array(_GraminaSymAttr); // We are essentially moving the array
+
+    Scope *parent_scope = CURRENT_SCOPE(S);
+    hashmap_set(&parent_scope->identifiers, name, fn_ident);
+
+    vlog_fmt("Registering function '{sv}'\n", &name);
+
+    if (this->type == GRAMINA_AST_FUNCTION_DECLARATION) {
+        return;
+    }
+
+    bool has_tail_return = check_tail_return(this);
+
+    push_reflection(S, fn_type.return_type);
+
+    LLVMBasicBlockRef body = LLVMAppendBasicBlock(func, "entry");
+    LLVMPositionBuilderAtEnd(S->llvm_builder, body);
+
+    push_scope(S);
+
+    register_params(S, func, &fn_type, sret, this);
 
     block(S, func, this->right);
     pop_scope(S);
