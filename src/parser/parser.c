@@ -8,6 +8,7 @@
 #include "common/log.h"
 
 #include "parser/ast.h"
+#include "parser/attributes.h"
 #include "parser/parser.h"
 
 #define SV_NULL ((StringView) { .length = 0, .data = NULL })
@@ -442,6 +443,43 @@ static AstNode *struct_def(ParserState *S) {
 }
 
 static AstNode *global_statement(ParserState *S) {
+    Array(_GraminaSymAttr) attribs = mk_array(_GraminaSymAttr);
+    while (CURRENT(S).type == GRAMINA_TOK_HASH) {
+        CONSUME(S);
+
+        if (CURRENT(S).type != GRAMINA_TOK_IDENTIFIER) {
+            SET_ERR(S, mk_str_c("expected attribute name"));
+
+            array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+                symattr_free(attr);
+            }
+
+            array_free(_GraminaSymAttr, &attribs);
+            return NULL;
+        }
+
+        StringView attrib_name = str_as_view(&CURRENT(S).contents);
+        SymbolAttributeKind kind = get_attrib_kind(&attrib_name);
+        if (kind == GRAMINA_ATTRIBUTE_NONE) {
+            SET_ERR(S, str_cfmt("unknown attribute '{sv}'", &attrib_name));
+
+            array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+                symattr_free(attr);
+            }
+
+            array_free(_GraminaSymAttr, &attribs);
+            return NULL;
+        }
+
+        SymbolAttribute attrib = {
+            .kind = kind,
+        };
+
+        array_append(_GraminaSymAttr, &attribs, attrib);
+
+        CONSUME(S);
+    }
+
     switch (CURRENT(S).type) {
     case GRAMINA_TOK_KW_FN: {
         AstNode *def = function_def(S);
@@ -450,12 +488,19 @@ static AstNode *global_statement(ParserState *S) {
                 SET_ERR(S, mk_str_c("expected function definition"));
             }
 
+            array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+                symattr_free(attr);
+            }
+
+            array_free(_GraminaSymAttr, &attribs);
             return NULL;
         }
 
         AstNode *this = mk_ast_node_lr(NULL, def, NULL);
         this->type = GRAMINA_AST_GLOBAL_STATEMENT;
         this->pos = def->pos;
+
+        def->value.attributes = attribs;
 
         return this;
     }
@@ -466,6 +511,11 @@ static AstNode *global_statement(ParserState *S) {
                 SET_ERR(S, mk_str_c("expected struct definition"));
             }
 
+            array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+                symattr_free(attr);
+            }
+
+            array_free(_GraminaSymAttr, &attribs);
             return NULL;
         }
 
@@ -473,11 +523,19 @@ static AstNode *global_statement(ParserState *S) {
         this->type = GRAMINA_AST_STRUCT_DEF;
         this->pos = def->pos;
 
+        def->value.attributes = attribs;
+
         return this;
     }
     default:
         break;
     }
+
+    array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+        symattr_free(attr);
+    }
+
+    array_free(_GraminaSymAttr, &attribs);
 
     SET_ERR(S, mk_str_c("expected 'fn' or 'struct'"));
     return NULL;
