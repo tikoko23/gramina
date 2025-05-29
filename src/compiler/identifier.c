@@ -6,6 +6,8 @@
 #include "compiler/identifier.h"
 #include "compiler/type.h"
 
+#include "parser/attributes.h"
+
 GRAMINA_IMPLEMENT_ARRAY(GraminaIdentifier)
 
 Identifier *gramina_scope_resolve(const Scope *this, const StringView *ident_name) {
@@ -34,5 +36,11 @@ void gramina_identifier_free(Identifier *this) {
     this->type = (Type) {
         .kind = GRAMINA_TYPE_INVALID,
     };
+
+    array_foreach_ref(_GraminaSymAttr, _, attrib, this->attributes) {
+        symattr_free(attrib);
+    }
+
+    array_free(_GraminaSymAttr, &this->attributes);
 }
 
