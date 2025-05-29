@@ -408,6 +408,10 @@ static String format(const StringView *fmt, va_list args) {
                 StringView view = mk_sv_c(arg);
 
                 str_cat_sv(&out, &view);
+            } else if (sv_cmp_c(&spec, "bool") == 0) {
+                bool arg = va_arg(args, int);
+
+                str_cat_cstr(&out, arg ? "true" : "false");
 
             } else if (sv_cmp_c(&spec, "sz") == 0) {
                 size_t arg = va_arg(args, size_t);
