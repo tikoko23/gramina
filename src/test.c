@@ -30,11 +30,10 @@ static void show_general_help() {
     const char *help =
         "Usage: ./test [options] files...\n"
         "Options:\n"
-        "\t-h, --help [topic?]              Show this message or help on a specific topic\n"
+        "\t--help [topic?]                  Show this message or help on a specific topic\n"
         "\t-v, --verbose                    Enable verbose logging\n"
         "\t--log-level [level]              Set the log level (`--help log-level` for more information)\n"
-        "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n"
-        "";
+        "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n";
 
     printf("%s", help);
 }

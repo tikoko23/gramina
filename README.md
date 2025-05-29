@@ -59,4 +59,4 @@ scripts/clean_examples.sh
 Documentation of the language and the compiler frontend is currently lacking. Since the language is still in very early stages, significant changes are expected, thus documentation is not the top priority.
 
 # Codebase
-The gramina codebase uses header generation to provide namespace-like functionality. `CMakeLists.txt` creates an appropriate which calls related files from `scripts/*.py`.
+The gramina codebase uses header generation to provide namespace-like functionality. `CMakeLists.txt` creates an appropriate target which calls related files from `scripts/`.
