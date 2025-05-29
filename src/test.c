@@ -1,3 +1,9 @@
+/**
+ * !!!!
+ * This file will soon be moved into a seperate module for the gramina-cli
+ * !!!!
+ */
+
 #define GRAMINA_NO_NAMESPACE
 
 #include <errno.h>
@@ -7,6 +13,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Error.h>
 
+#include "common/arg.h"
 #include "common/array.h"
 #include "common/error.h"
 #include "common/hashmap.h"
@@ -18,6 +25,37 @@
 #include "parser/ast.h"
 #include "parser/lexer.h"
 #include "parser/parser.h"
+
+static void show_general_help() {
+    const char *help =
+        "Usage: ./test [options] files...\n"
+        "Options:\n"
+        "\t-h, --help [topic?]              Show this message or help on a specific topic\n"
+        "\t-v, --verbose                    Enable verbose logging\n"
+        "\t--log-level [level]              Set the log level (`--help log-level` for more information)\n"
+        "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n"
+        "";
+
+    printf("%s", help);
+}
+
+static void show_specific_help(const char *topic) {
+    if (false) {
+    } else if (strcmp(topic, "log-level") == 0) {
+        const char *log_level_help =
+            "List of available levels:\n"
+            "\tall (equivalent to '-v' and '--verbose')\n"
+            "\tinfo\n"
+            "\twarn\n"
+            "\terror\n"
+            "\tsilent (disables all logs except ones which shouldn't be ignored)\n"
+            "\tnone (disables every level of logging)\n";
+
+        printf("%s", log_level_help);
+    } else {
+        elog_fmt("No specific help for topic '{cstr}'\n", topic);
+    }
+}
 
 static void highlight_char(const char *source, size_t line, size_t column) {
     FILE *file = fopen(source, "r");
@@ -65,35 +103,116 @@ static void highlight_char(const char *source, size_t line, size_t column) {
 }
 
 int main(int argc, char **argv) {
-    char *source = NULL;
-    size_t excess_file_args = 0;
-    for (size_t i = 1; i < argc; ++i) {
-        char *arg = argv[i];
-        if (strcmp(arg, "-v") == 0
-         || strcmp(arg, "--verbose") == 0) {
-            gramina_global_log_level = GRAMINA_LOG_LEVEL_VERBOSE;
-            continue;
-        }
-
-        if (source) {
-            ++excess_file_args;
-            continue;
-        }
-
-        source = arg;
-    }
-
     init();
     atexit(cleanup);
 
-    if (!source) {
-        elog_fmt("Missing file argument\n");
+    enum {
+        HELP_ARG,
+        VERBOSE_ARG,
+        OUT_FILE_ARG,
+        LOG_LEVEL_ARG,
+    };
+
+    ArgumentInfo argument_info[] = {
+        [HELP_ARG] = {
+            .name = "help",
+            .type = GRAMINA_ARG_LONG,
+            .param_needs = GRAMINA_PARAM_OPTIONAL,
+        },
+        [VERBOSE_ARG] = {
+            .name = "verbose",
+            .flag = 'v',
+            .type = GRAMINA_ARG_LONG | GRAMINA_ARG_FLAG,
+            .param_needs = GRAMINA_PARAM_NONE,
+        },
+        [OUT_FILE_ARG] = {
+            .flag = 'o',
+            .type = GRAMINA_ARG_FLAG,
+            .param_needs = GRAMINA_PARAM_REQUIRED,
+        },
+        [LOG_LEVEL_ARG] = {
+            .name = "log-level",
+            .type = GRAMINA_ARG_LONG,
+            .param_needs = GRAMINA_PARAM_REQUIRED,
+        },
+    };
+
+    Arguments args = {
+        .named = mk_array_c(_GraminaArgInfo, argument_info, (sizeof argument_info) / (sizeof argument_info[0])),
+    };
+
+    if (args_parse(&args, argc, argv)) {
+        elog_fmt("Arguments: {s}\n", &args.error);
+        args_free(&args);
         return -1;
     }
 
-    if (excess_file_args) {
-        wlog_fmt("Ignoring {sz} extra argument{cstr} provided\n", excess_file_args, excess_file_args == 1 ? "" : "s");
+    ArgumentInfo *help_arg = &args.named.items[HELP_ARG];
+
+    if (help_arg->found) {
+        if (!help_arg->param) {
+            show_general_help();
+        } else {
+            show_specific_help(help_arg->param);
+        }
+
+        args_free(&args);
+        return 0;
     }
+
+    if (args.positional.length == 0) {
+        elog_fmt("Missing file argument\n");
+        args_free(&args);
+        return -1;
+    }
+
+    ArgumentInfo *outfile_arg = &args.named.items[OUT_FILE_ARG];
+    ArgumentInfo *log_level_arg = &args.named.items[LOG_LEVEL_ARG];
+    ArgumentInfo *verbose_arg = &args.named.items[VERBOSE_ARG];
+
+    const char *source = args.positional.items[0];
+    const char *outfile = outfile_arg->found
+                        ? outfile_arg->param
+                        : "out.ll";
+
+    size_t excess_file_args = args.positional.length - 1;
+
+    if (excess_file_args) {
+        wlog_fmt("Ignoring {sz} extra file argument{cstr} provided\n", excess_file_args, excess_file_args == 1 ? "" : "s");
+    }
+
+    if (verbose_arg->found) {
+        gramina_global_log_level = GRAMINA_LOG_LEVEL_VERBOSE;
+    }
+
+    if (log_level_arg->found) {
+        StringView param = mk_sv_c(log_level_arg->param);
+
+        if (false) {
+        } else if (sv_cmp_c(&param, "all") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_VERBOSE;
+        } else if (sv_cmp_c(&param, "info") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_INFO;
+        } else if (sv_cmp_c(&param, "warn") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_WARN;
+        } else if (sv_cmp_c(&param, "error") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_ERROR;
+        } else if (sv_cmp_c(&param, "silent") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_NONE;
+        } else if (sv_cmp_c(&param, "none") == 0) {
+            gramina_global_log_level = GRAMINA_LOG_LEVEL_NONE + 1;
+        } else {
+            elog_fmt("Unknown log level '{sv}'\n", &param);
+            args_free(&args);
+            return -1;
+        }
+
+        if (verbose_arg->found) {
+            wlog_fmt("'--log-level' will override '--verbose' and '-v'\n");
+        }
+    }
+
+    args_free(&args);
 
     int status = 0;
 
@@ -194,8 +313,8 @@ int main(int argc, char **argv) {
     ilog_fmt("Compilation finished!\n");
 
     char *err;
-    if (LLVMPrintModuleToFile(cresult.module, "out.ll", &err)) {
-        elog_fmt("Error while writing 'out.ll': {cstr}\n", err);
+    if (LLVMPrintModuleToFile(cresult.module, outfile, &err)) {
+        elog_fmt("Error while writing '{cstr}': {cstr}\n", outfile, err);
         LLVMDisposeErrorMessage(err);
     }
 
