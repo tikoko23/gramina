@@ -12,6 +12,8 @@ struct gramina_value gramina_unary_arithmetic_expr(struct gramina_compiler_state
 
 struct gramina_value gramina_cast_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
+struct gramina_value gramina_assign_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
+
 struct gramina_value gramina_address_of_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 struct gramina_value gramina_deref_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 

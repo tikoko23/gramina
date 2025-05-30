@@ -4,7 +4,7 @@
 #include "compiler/cstate.h"
 #include "compiler/value.h"
 
-struct gramina_value gramina_primitive_convert(struct gramina_compiler_state *S, const struct gramina_value *from);
+struct gramina_value gramina_primitive_convert(struct gramina_compiler_state *S, const struct gramina_value *from, const struct gramina_type *to);
 bool gramina_convert_inplace(struct gramina_compiler_state *S, struct gramina_value *value, const struct gramina_type *to);
 struct gramina_value gramina_convert(struct gramina_compiler_state *S, const struct gramina_value *from, const struct gramina_type *to);
 

@@ -35,7 +35,7 @@ enum gramina_logical_bin_op {
 
 int gramina_get_op_from_ast_node(const struct gramina_ast_node *node);
 struct gramina_string_view gramina_get_arithmetic_bin_op(enum gramina_arithmetic_bin_op op);
-struct gramina_string_view gramina_get_comparison_bin_op(enum gramina_comparison_op op);
+struct gramina_string_view gramina_get_comparison_op(enum gramina_comparison_op op);
 
 #endif
 #include "gen/compiler/op.h"

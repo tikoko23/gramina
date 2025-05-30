@@ -31,5 +31,16 @@ struct gramina_compiler_state {
     bool has_error;
 };
 
+#define GRAMINA_CURRENT_SCOPE(S) (array_last(GraminaScope, &S->scopes))
+#define GRAMINA_REFLECT(index) (S->reflection.items + (index))
+
 #endif
 #include "gen/compiler/cstate.h"
+
+#if !defined(CURRENT_SCOPE) && defined(GRAMINA_NO_NAMESPACE)
+#  define CURRENT_SCOPE(S) GRAMINA_CURRENT_SCOPE(S)
+#endif
+
+#if !defined(REFLECT) && defined(GRAMINA_NO_NAMESPACE)
+#  define REFLECT(S) GRAMINA_REFLECT(S)
+#endif
