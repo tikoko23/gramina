@@ -6,6 +6,7 @@
 #include "common/error.h"
 #include "common/stream.h"
 
+#include "parser/attributes.h"
 #include "parser/token.h"
 
 enum gramina_ast_node_type {
@@ -135,7 +136,10 @@ union gramina_ast_node_value {
 
     bool logical;
 
-    struct gramina_string identifier;
+    struct {
+        struct gramina_string identifier;
+        struct gramina_array(_GraminaSymAttr) attributes;
+    };
 };
 
 struct gramina_ast_node {

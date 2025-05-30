@@ -1,11 +1,13 @@
 #define GRAMINA_NO_NAMESPACE
 
 #include <stdint.h>
+#include <string.h>
 
 #include "common/array.h"
 #include "common/str.h"
 
 #include "parser/ast.h"
+#include "parser/attributes.h"
 
 #undef bool
 
@@ -32,6 +34,7 @@ AstNode *gramina_mk_ast_node(AstNode *parent) {
     this->parent = parent;
     this->left = NULL;
     this->right = NULL;
+    memset(&this->value, 0, (sizeof this->value));
 
     return this;
 }
@@ -44,6 +47,7 @@ AstNode *gramina_mk_ast_node_lr(AstNode *parent, AstNode *l, AstNode *r) {
 
     this->left = l;
     this->right = r;
+    memset(&this->value, 0, (sizeof this->value));
 
     if (l) {
         l->parent = this;
@@ -66,6 +70,19 @@ void gramina_ast_node_free(AstNode *this) {
     case GRAMINA_AST_FUNCTION_DEF:
     case GRAMINA_AST_FUNCTION_DECLARATION:
         str_free(&this->value.identifier);
+
+        array_foreach_ref(_GraminaSymAttr, _, attrib, this->value.attributes) {
+            symattr_free(attrib);
+        }
+
+        array_free(_GraminaSymAttr, &this->value.attributes);
+        break;
+    case GRAMINA_AST_STRUCT_DEF:
+        array_foreach_ref(_GraminaSymAttr, _, attrib, this->value.attributes) {
+            symattr_free(attrib);
+        }
+
+        array_free(_GraminaSymAttr, &this->value.attributes);
         break;
     default:
         break;
@@ -124,7 +141,8 @@ static String ast_node_stringify(const AstNode *this) {
         break;
     case GRAMINA_AST_IDENTIFIER:
     case GRAMINA_AST_FUNCTION_DEF:
-        str_cat_cfmt(&out, "name: {s}", &this->value.identifier);
+    case GRAMINA_AST_FUNCTION_DECLARATION:
+        str_cat_cfmt(&out, "name: {s}, {sz} attribute(s)", &this->value.identifier, this->value.attributes.length);
         break;
     default:
         break;

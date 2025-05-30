@@ -1,11 +1,14 @@
-#include <llvm-c/Types.h>
 #ifndef __GRAMINA_COMPILER_IDENTIFIER_H
+
+#include <llvm-c/Types.h>
 
 #include "common/array.h"
 #include "common/str.h"
 
-#include "type.h"
-#include "cstate.h"
+#include "compiler/cstate.h"
+#include "compiler/type.h"
+
+#include "parser/attributes.h"
 
 enum gramina_identifier_kind {
     GRAMINA_IDENT_KIND_VAR,
@@ -16,6 +19,7 @@ enum gramina_identifier_kind {
 struct gramina_identifier {
     enum gramina_identifier_kind kind;
     struct gramina_type type;
+    struct gramina_array(_GraminaSymAttr) attributes;
     LLVMValueRef llvm;
 };
 
