@@ -1,7 +1,7 @@
 #ifndef __GRAMINA_COMPILER_SCOPE_H
 
-#include "common/hashmap.h"
 #include "common/array.h"
+#include "common/hashmap.h"
 
 struct gramina_scope {
     struct gramina_hashmap identifiers;
@@ -15,7 +15,7 @@ struct gramina_scope {
 
 #undef GRAMINA_WANT_TAGLESS
 
-GRAMINA_DECLARE_ARRAY(GraminaScope)
+GRAMINA_DECLARE_ARRAY(GraminaScope);
 
 struct gramina_scope gramina_mk_scope();
 

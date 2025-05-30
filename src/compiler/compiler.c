@@ -1299,7 +1299,7 @@ static bool collect_params(CompilerState *S, AstNode *this, AstNode **params, si
     return true;
 }
 
-static Value call(CompilerState *S, Identifier *func, const Value *args, size_t n_params) {
+static Value call(CompilerState *S, const Identifier *func, const Value *args, size_t n_params) {
     bool is_sret = func->type.return_type->kind == GRAMINA_TYPE_STRUCT;
 
     // In all cases, `llvm_args[0]` is reserved for sret
