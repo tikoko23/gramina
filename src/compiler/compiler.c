@@ -27,6 +27,77 @@ GRAMINA_IMPLEMENT_ARRAY(String, static);
 #define REFLECT(index) (S->reflection.items + (index))
 
 typedef enum {
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+    OP_REM,
+} ArithmeticBinOp;
+
+typedef enum {
+    OP_NEGATION,
+    OP_IDENTITY,
+} ArithmeticUnOp;
+
+typedef enum {
+    OP_EQUAL,
+    OP_INEQUAL,
+    OP_LT,
+    OP_LTE,
+    OP_GT,
+    OP_GTE,
+} ComparisonOp;
+
+typedef enum {
+    OP_L_OR,
+    OP_L_XOR,
+    OP_L_AND,
+} LogicalBinOp;
+
+int get_op_from_ast_node(const AstNode *node) {
+    switch (node->type) {
+    case GRAMINA_AST_OP_ADD:
+        return OP_ADD;
+    case GRAMINA_AST_OP_SUB:
+        return OP_SUB;
+    case GRAMINA_AST_OP_MUL:
+        return OP_MUL;
+    case GRAMINA_AST_OP_DIV:
+        return OP_DIV;
+    case GRAMINA_AST_OP_REM:
+        return OP_REM;
+
+    case GRAMINA_AST_OP_UNARY_PLUS:
+        return OP_IDENTITY;
+    case GRAMINA_AST_OP_UNARY_MINUS:
+        return OP_NEGATION;
+
+    case GRAMINA_AST_OP_EQUAL:
+        return OP_EQUAL;
+    case GRAMINA_AST_OP_INEQUAL:
+        return OP_INEQUAL;
+    case GRAMINA_AST_OP_LT:
+        return OP_LT;
+    case GRAMINA_AST_OP_LTE:
+        return OP_LTE;
+    case GRAMINA_AST_OP_GT:
+        return OP_GT;
+    case GRAMINA_AST_OP_GTE:
+        return OP_GTE;
+
+    case GRAMINA_AST_OP_LOGICAL_OR:
+        return OP_L_OR;
+    case GRAMINA_AST_OP_LOGICAL_XOR:
+        return OP_L_XOR;
+    case GRAMINA_AST_OP_LOGICAL_AND:
+        return OP_L_AND;
+
+    default:
+        return -1;
+    }
+}
+
+typedef enum {
     CLASS_INVALID,
     CLASS_ALLOCA,
     CLASS_LVALUE,
@@ -92,36 +163,39 @@ static int llvm_deinit(CompilerState *S) {
     return 0;
 }
 
-static StringView get_op(AstNodeType t) {
-    switch (t) {
-    case GRAMINA_AST_OP_ADD:
+static StringView get_arithmetic_bin_op(ArithmeticBinOp op) {
+    switch (op) {
+    case OP_ADD:
         return mk_sv_c("+");
-    case GRAMINA_AST_OP_SUB:
+    case OP_SUB:
         return mk_sv_c("-");
-    case GRAMINA_AST_OP_MUL:
+    case OP_MUL:
         return mk_sv_c("*");
-    case GRAMINA_AST_OP_DIV:
+    case OP_DIV:
         return mk_sv_c("/");
-    case GRAMINA_AST_OP_REM:
+    case OP_REM:
         return mk_sv_c("%");
-    case GRAMINA_AST_OP_LT:
-        return mk_sv_c("<");
-    case GRAMINA_AST_OP_GT:
-        return mk_sv_c(">");
-    case GRAMINA_AST_OP_LTE:
-        return mk_sv_c("<=");
-    case GRAMINA_AST_OP_GTE:
-        return mk_sv_c(">=");
-    case GRAMINA_AST_OP_EQUAL:
-        return mk_sv_c("==");
-    case GRAMINA_AST_OP_INEQUAL:
-        return mk_sv_c("!=");
-    default:
-        return mk_sv_c("");
     }
 }
 
-static void putcs_err(CompilerState *S, const char *err, TokenPosition pos) {
+static StringView get_comparison_op(ComparisonOp op) {
+    switch (op) {
+    case OP_EQUAL:
+        return mk_sv_c("==");
+    case OP_INEQUAL:
+        return mk_sv_c("!=");
+    case OP_LT:
+        return mk_sv_c("<");
+    case OP_LTE:
+        return mk_sv_c("<=");
+    case OP_GT:
+        return mk_sv_c(">");
+    case OP_GTE:
+        return mk_sv_c(">=");
+    }
+}
+
+static void putcs_err(CompilerState *S, const char *err) {
     if (S->has_error) {
         return;
     }
@@ -130,12 +204,11 @@ static void putcs_err(CompilerState *S, const char *err, TokenPosition pos) {
 
     S->has_error = true;
     S->error = (CompileError) {
-        .pos = pos,
         .description = mk_str_c(err),
     };
 }
 
-static void puts_err(CompilerState *S, String err, TokenPosition pos) {
+static void puts_err(CompilerState *S, String err) {
     if (S->has_error) {
         str_free(&err);
         return;
@@ -145,94 +218,93 @@ static void puts_err(CompilerState *S, String err, TokenPosition pos) {
 
     S->has_error = true;
     S->error = (CompileError) {
-        .pos = pos,
         .description = err,
     };
 }
 
-static void err_implicit_conv(CompilerState *S, const Type *from, const Type *to, TokenPosition pos) {
-    puts_err(S, str_cfmt("cannot implicitly convert '{so}' into '{so}'", type_to_str(from), type_to_str(to)), pos);
+static void err_implicit_conv(CompilerState *S, const Type *from, const Type *to) {
+    puts_err(S, str_cfmt("cannot implicitly convert '{so}' into '{so}'", type_to_str(from), type_to_str(to)));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_explicit_conv(CompilerState *S, const Type *from, const Type *to, TokenPosition pos) {
-    puts_err(S, str_cfmt("no such conversion from '{so}' to '{so}' exists", type_to_str(from), type_to_str(to)), pos);
+static void err_explicit_conv(CompilerState *S, const Type *from, const Type *to) {
+    puts_err(S, str_cfmt("no such conversion from '{so}' to '{so}' exists", type_to_str(from), type_to_str(to)));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_illegal_node(CompilerState *S, const AstNode *this) {
-    StringView type = ast_node_type_to_str(this->type);
-    puts_err(S, str_cfmt("illegal node '{sv}'", &type), this->pos);
+static void err_illegal_node(CompilerState *S, AstNodeType type) {
+    StringView type_str = ast_node_type_to_str(type);
+    puts_err(S, str_cfmt("illegal node '{sv}'", &type_str));
     S->status = GRAMINA_COMPILE_ERR_ILLEGAL_NODE;
 }
 
-static void err_undeclared_ident(CompilerState *S, const StringView *name, TokenPosition pos) {
-    puts_err(S, str_cfmt("use of undeclared identifier '{sv}'", name), pos);
+static void err_undeclared_ident(CompilerState *S, const StringView *name) {
+    puts_err(S, str_cfmt("use of undeclared identifier '{sv}'", name));
     S->status = GRAMINA_COMPILE_ERR_UNDECLARED_IDENTIFIER;
 }
 
-static void err_redeclaration(CompilerState *S, const StringView *name, TokenPosition pos) {
-    puts_err(S, str_cfmt("redeclaration of '{sv}'", name), pos);
+static void err_redeclaration(CompilerState *S, const StringView *name) {
+    puts_err(S, str_cfmt("redeclaration of '{sv}'", name));
     S->status = GRAMINA_COMPILE_ERR_REDECLARATION;
 }
 
-static void err_rvalue_assign(CompilerState *S, const Type *type, TokenPosition pos) {
-    puts_err(S, str_cfmt("assigning to rvalue of type '{so}'", type_to_str(type)), pos);
+static void err_rvalue_assign(CompilerState *S, const Type *type) {
+    puts_err(S, str_cfmt("assigning to rvalue of type '{so}'", type_to_str(type)));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_VALUE_CLASS;
 }
 
-static void err_deref(CompilerState *S, const Type *type, TokenPosition pos) {
-    puts_err(S, str_cfmt("use of '@' on incompatible type '{so}'", type_to_str(type)), pos);
+static void err_deref(CompilerState *S, const Type *type) {
+    puts_err(S, str_cfmt("use of '@' on incompatible type '{so}'", type_to_str(type)));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_illegal_op(CompilerState *S, const Type *l, const Type *r, const StringView *op, TokenPosition pos) {
+static void err_illegal_op(CompilerState *S, const Type *l, const Type *r, const StringView *op) {
     puts_err(S, str_cfmt(
         "illegal op '{sv}' on types '{so}' and '{so}'",
         op,
         type_to_str(l),
         type_to_str(r)
-    ), pos);
+    ));
 
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_missing_ret(CompilerState *S, const Type *ret, TokenPosition pos) {
-    puts_err(S, str_cfmt("type '{so}' must be returned on function tail", type_to_str(ret)), pos);
+static void err_missing_ret(CompilerState *S, const Type *ret) {
+    puts_err(S, str_cfmt("type '{so}' must be returned on function tail", type_to_str(ret)));
     S->status = GRAMINA_COMPILE_ERR_MISSING_RETURN;
 }
 
-static void err_cannot_call(CompilerState *S, const Type *type, TokenPosition pos) {
-    puts_err(S, str_cfmt("cannot call value of type '{so}'", type_to_str(type)), pos);
+static void err_cannot_call(CompilerState *S, const Type *type) {
+    puts_err(S, str_cfmt("cannot call value of type '{so}'", type_to_str(type)));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_cannot_have_member(CompilerState *S, const Type *type, TokenPosition pos) {
-    puts_err(S, str_cfmt("value of type '{so}' cannot have member", type_to_str(type)), pos);
+static void err_cannot_have_member(CompilerState *S, const Type *type) {
+    puts_err(S, str_cfmt("value of type '{so}' cannot have member", type_to_str(type)));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_no_field(CompilerState *S, const Type *type, const StringView *field, TokenPosition pos) {
+static void err_no_field(CompilerState *S, const Type *type, const StringView *field) {
     const Type *indexed = type->kind == GRAMINA_TYPE_POINTER
                         ? type->pointer_type
                         : type;
 
-    puts_err(S, str_cfmt("type '{so}' does not have '{sv}' field", type_to_str(indexed), field), pos);
+    puts_err(S, str_cfmt("type '{so}' does not have '{sv}' field", type_to_str(indexed), field));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_insufficient_args(CompilerState *S, size_t wants, size_t got, TokenPosition pos) {
-    puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got {sz}", wants, wants == 1 ? "t" : "ts", got), pos);
+static void err_insufficient_args(CompilerState *S, size_t wants, size_t got) {
+    puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got {sz}", wants, wants == 1 ? "t" : "ts", got));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_excess_args(CompilerState *S, size_t wants, TokenPosition pos) {
-    puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"), pos);
+static void err_excess_args(CompilerState *S, size_t wants) {
+    puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
-static void err_no_attrib_arg(CompilerState *S, const StringView *attrib_name, TokenPosition pos) {
-    puts_err(S, str_cfmt("attribute '{sv}' needs an argument"), pos);
+static void err_no_attrib_arg(CompilerState *S, const StringView *attrib_name) {
+    puts_err(S, str_cfmt("attribute '{sv}' needs an argument"));
     S->status = GRAMINA_COMPILE_ERR_MISSING_ATTRIB_ARG;
 }
 
@@ -382,36 +454,36 @@ static Value convert(CompilerState *S, const Value *from, const Type *to) {
     return invalid_value();
 }
 
-static CoercionResult coerce_primitives(CompilerState *S, const Value *left, const Value *right, Value *lhs, Value *rhs, AstNode *this) {
+static CoercionResult coerce_primitives(CompilerState *S, const Value *left, const Value *right, Value *result_lhs, Value *result_rhs) {
     CoercionResult coerced = primitive_coercion(&left->type, &right->type);
 
     if (coerced.greater_type.kind == GRAMINA_TYPE_INVALID) {
-        err_implicit_conv(S, &left->type, &right->type, this->pos);
+        err_implicit_conv(S, &left->type, &right->type);
 
-        *lhs = invalid_value();
-        *rhs = invalid_value();
+        *result_lhs = invalid_value();
+        *result_rhs = invalid_value();
         return coerced;
     }
 
     if (left->type.primitive == right->type.primitive) {
-        *lhs = try_load(S, left);
-        *rhs = try_load(S, right);
+        *result_lhs = try_load(S, left);
+        *result_rhs = try_load(S, right);
     } else if (coerced.is_right_promoted) {
-        *lhs = try_load(S, left);
-        *rhs = convert(S, right, &coerced.greater_type);
+        *result_lhs = try_load(S, left);
+        *result_rhs = convert(S, right, &coerced.greater_type);
     } else {
-        *lhs = convert(S, left, &coerced.greater_type);
-        *rhs = try_load(S, right);
+        *result_lhs = convert(S, left, &coerced.greater_type);
+        *result_rhs = try_load(S, right);
     }
 
     return coerced;
 }
 
-static Value primitive_arithmetic(CompilerState *S, AstNode *this, const Value *left, const Value *right) {
+static Value primitive_arithmetic(CompilerState *S, const Value *left, const Value *right, ArithmeticBinOp operation) {
     Value lhs;
     Value rhs;
 
-    CoercionResult coerced = coerce_primitives(S, left, right, &lhs, &rhs, this);
+    CoercionResult coerced = coerce_primitives(S, left, right, &lhs, &rhs);
     if (S->has_error) {
         return invalid_value();
     }
@@ -421,23 +493,23 @@ static Value primitive_arithmetic(CompilerState *S, AstNode *this, const Value *
     bool is_integer = primitive_is_integral(coerced.greater_type.primitive);
     bool signedness = !primitive_is_unsigned(coerced.greater_type.primitive);
 
-    switch (this->type) {
-    case GRAMINA_AST_OP_ADD:
+    switch (operation) {
+    case OP_ADD:
         op = is_integer
            ? LLVMAdd
            : LLVMFAdd;
         break;
-    case GRAMINA_AST_OP_SUB:
+    case OP_SUB:
         op = is_integer
            ? LLVMSub
            : LLVMFSub;
         break;
-    case GRAMINA_AST_OP_MUL:
+    case OP_MUL:
         op = is_integer
            ? LLVMMul
            : LLVMFMul;
         break;
-    case GRAMINA_AST_OP_DIV:
+    case OP_DIV:
         if (is_integer) {
             op = signedness
                ? LLVMSDiv
@@ -446,7 +518,7 @@ static Value primitive_arithmetic(CompilerState *S, AstNode *this, const Value *
             op = LLVMFDiv;
         }
         break;
-    case GRAMINA_AST_OP_REM:
+    case OP_REM:
         if (is_integer) {
             op = signedness
                ? LLVMSRem
@@ -456,7 +528,6 @@ static Value primitive_arithmetic(CompilerState *S, AstNode *this, const Value *
         }
         break;
     default:
-        err_illegal_node(S, this);
         return invalid_value();
     }
 
@@ -514,26 +585,20 @@ static Value pointer_to_int(CompilerState *S, const Value *ptr) {
     return ret;
 }
 
-static Value pointer_arithmetic(CompilerState *S, const Value *left, const Value *right, AstNode *this) {
-    if (left->type.kind == right->type.kind && this->type != GRAMINA_AST_OP_SUB) {
-        StringView op = get_op(this->type);
-        err_illegal_op(S, &left->type, &right->type, &op, this->pos);
+static Value pointer_arithmetic(CompilerState *S, const Value *left, const Value *right, ArithmeticBinOp op) {
+    if (op != OP_ADD
+     && op != OP_SUB) {
+        StringView op_str = get_arithmetic_bin_op(op);
+        err_illegal_op(S, &left->type, &right->type, &op_str);
 
         return invalid_value();
     }
 
-    if (this->type != GRAMINA_AST_OP_ADD
-     && this->type != GRAMINA_AST_OP_SUB) {
-        StringView op = get_op(this->type);
-        err_illegal_op(S, &left->type, &right->type, &op, this->pos);
-
-        return invalid_value();
-    }
-
+    // Both are pointers
     if (left->type.kind == right->type.kind) {
-        if (!type_is_same(&left->type, &right->type)) {
-            StringView op = get_op(this->type);
-            err_illegal_op(S, &left->type, &right->type, &op, this->pos);
+        if (op != OP_SUB || !type_is_same(&left->type, &right->type)) {
+            StringView op_str = get_arithmetic_bin_op(op);
+            err_illegal_op(S, &left->type, &right->type, &op_str);
 
             return invalid_value();
         }
@@ -571,7 +636,7 @@ static Value pointer_arithmetic(CompilerState *S, const Value *left, const Value
                             : left;
 
     LLVMValueRef offset = offset_val->llvm;
-    if (this->type == GRAMINA_AST_OP_SUB) {
+    if (op == OP_SUB) {
         offset = LLVMBuildNeg(S->llvm_builder, offset, "");
     }
 
@@ -593,84 +658,77 @@ static Value pointer_arithmetic(CompilerState *S, const Value *left, const Value
 }
 
 static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this);
-static Value arithmetic(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value left = expression(S, function, this->left);
-    Value right = expression(S, function, this->right);
-
-    if (left.type.kind == GRAMINA_TYPE_PRIMITIVE && right.type.kind == GRAMINA_TYPE_PRIMITIVE) {
-        Value ret = primitive_arithmetic(S, this, &left, &right);
-
-        value_free(&left);
-        value_free(&right);
-
-        return ret;
+static Value arithmetic(CompilerState *S, const Value *lhs, const Value *rhs, ArithmeticBinOp op) {
+    if (lhs->type.kind == GRAMINA_TYPE_PRIMITIVE && rhs->type.kind == GRAMINA_TYPE_PRIMITIVE) {
+        return primitive_arithmetic(S, lhs, rhs, op);
     }
 
-    bool left_is_pointer_compatible = left.type.kind == GRAMINA_TYPE_POINTER;
-    left_is_pointer_compatible |= left.type.kind == GRAMINA_TYPE_PRIMITIVE && primitive_is_integral(left.type.primitive);
+    bool lhs_is_pointer_compatible = lhs->type.kind == GRAMINA_TYPE_POINTER;
+    lhs_is_pointer_compatible |= lhs->type.kind == GRAMINA_TYPE_PRIMITIVE && primitive_is_integral(lhs->type.primitive);
 
-    bool right_is_pointer_compatible = right.type.kind == GRAMINA_TYPE_POINTER;
-    right_is_pointer_compatible |= right.type.kind == GRAMINA_TYPE_PRIMITIVE && primitive_is_integral(right.type.primitive);
+    bool rhs_is_pointer_compatible = rhs->type.kind == GRAMINA_TYPE_POINTER;
+    rhs_is_pointer_compatible |= rhs->type.kind == GRAMINA_TYPE_PRIMITIVE && primitive_is_integral(rhs->type.primitive);
 
-    if (left_is_pointer_compatible && right_is_pointer_compatible) {
-        try_load_inplace(S, &left);
-        try_load_inplace(S, &right);
+    if (lhs_is_pointer_compatible && rhs_is_pointer_compatible) {
+        Value loaded_left = try_load(S, lhs);
+        Value loaded_right = try_load(S, rhs);
 
-        Value ret = pointer_arithmetic(S, &left, &right, this);
+        Value ret = pointer_arithmetic(S, lhs, rhs, op);
 
-        value_free(&left);
-        value_free(&right);
+        value_free(&loaded_left);
+        value_free(&loaded_right);
 
         return ret;
     }
 
     return invalid_value();
 }
+static Value arithmetic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value left = expression(S, function, this->left);
+    Value right = expression(S, function, this->right);
 
-static Value cast(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Type to = type_from_ast_node(S, this->left);
-    if (S->has_error) {
-        type_free(&to);
-        return invalid_value();
+    Value ret = arithmetic(S, &left, &right, get_op_from_ast_node(this));
+
+    value_free(&left);
+    value_free(&right);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
     }
 
-    Value from = expression(S, function, this->right);
-    if (from.class == CLASS_ALLOCA) {
-        Value loaded = try_load(S, &from);
-        value_free(&from);
-        from = loaded;
-    }
+    return ret;
+}
 
-    if (type_is_same(&from.type, &to)) {
-        type_free(&to);
+static Value cast(CompilerState *S, const Value *_from, const Type *to) {
+    Value from = try_load(S, _from);
+
+    if (type_is_same(&from.type, to)) {
         return from;
     }
 
     // TODO: explicit cast overloading
 
-    if (from.type.kind == GRAMINA_TYPE_PRIMITIVE && to.kind == GRAMINA_TYPE_PRIMITIVE) {
-        Value ret = primitive_convert(S, &from, &to);
-        type_free(&to);
+    if (from.type.kind == GRAMINA_TYPE_PRIMITIVE && to->kind == GRAMINA_TYPE_PRIMITIVE) {
+        Value ret = primitive_convert(S, &from, to);
         value_free(&from);
 
         return ret;
     }
 
     if (from.type.kind == GRAMINA_TYPE_PRIMITIVE
-     && to.kind == GRAMINA_TYPE_POINTER) {
+     && to->kind == GRAMINA_TYPE_POINTER) {
         if (!primitive_is_integral(from.type.primitive)) {
-            err_explicit_conv(S, &from.type, &to, this->pos);
+            err_explicit_conv(S, &from.type, to);
 
-            type_free(&to);
             value_free(&from);
 
             return invalid_value();
         }
 
-        LLVMValueRef result = LLVMBuildIntToPtr(S->llvm_builder, from.llvm, to.llvm, "");
+        LLVMValueRef result = LLVMBuildIntToPtr(S->llvm_builder, from.llvm, to->llvm, "");
         Value ret = {
             .llvm = result,
-            .type = to,
+            .type = type_dup(to),
             .class = CLASS_RVALUE,
         };
 
@@ -680,20 +738,19 @@ static Value cast(CompilerState *S, LLVMValueRef function, AstNode *this) {
     }
 
     if (from.type.kind == GRAMINA_TYPE_POINTER
-     && to.kind == GRAMINA_TYPE_PRIMITIVE) {
-        if (!primitive_is_integral(to.primitive)) {
-            err_explicit_conv(S, &from.type, &to, this->pos);
+     && to->kind == GRAMINA_TYPE_PRIMITIVE) {
+        if (!primitive_is_integral(to->primitive)) {
+            err_explicit_conv(S, &from.type, to);
 
-            type_free(&to);
             value_free(&from);
 
             return invalid_value();
         }
 
-        LLVMValueRef result = LLVMBuildPtrToInt(S->llvm_builder, from.llvm, to.llvm, "");
+        LLVMValueRef result = LLVMBuildPtrToInt(S->llvm_builder, from.llvm, to->llvm, "");
         Value ret = {
             .llvm = result,
-            .type = to,
+            .type = type_dup(to),
             .class = CLASS_RVALUE,
         };
 
@@ -702,43 +759,103 @@ static Value cast(CompilerState *S, LLVMValueRef function, AstNode *this) {
         return ret;
     }
 
-    type_free(&to);
     return invalid_value();
 }
 
-static Value address_of(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value operand = expression(S, function, this->left);
+static Value cast_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Type to = type_from_ast_node(S, this->left);
+    if (S->has_error) {
+        type_free(&to);
+        return invalid_value();
+    }
 
-    switch (operand.class) {
+    Value from = expression(S, function, this->right);
+    Value ret = cast(S, &from, &to);
+
+    value_free(&from);
+    type_free(&to);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
+static Value address_of(CompilerState *S, const Value *operand) {
+    switch (operand->class) {
     case CLASS_ALLOCA: {
         Value ret = {
             .class = CLASS_RVALUE,
-            .type = mk_pointer_type(&operand.type),
-            .llvm = operand.llvm,
+            .type = mk_pointer_type(&operand->type),
+            .llvm = operand->llvm,
         };
-
-        value_free(&operand);
 
         return ret;
     }
     case CLASS_LVALUE: {
         Value ret = {
             .class = CLASS_RVALUE,
-            .type = mk_pointer_type(&operand.type),
-            .llvm = operand.lvalue_ptr,
+            .type = mk_pointer_type(&operand->type),
+            .llvm = operand->lvalue_ptr,
         };
-
-        value_free(&operand);
 
         return ret;
     }
     default:
-        puts_err(S, str_cfmt("taking address of rvalue of type '{so}'", type_to_str(&operand.type)), this->pos);
+        puts_err(S, str_cfmt("taking address of rvalue of type '{so}'", type_to_str(&operand->type)));
         return invalid_value();
     }
 }
 
-static Value assign(CompilerState *S, LLVMValueRef function, AstNode *this) {
+static Value address_of_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value operand = expression(S, function, this->left);
+    Value ret = address_of(S, &operand);
+
+    value_free(&operand);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
+static Value assign(CompilerState *S, Value *target, const Value *from) {
+    LLVMValueRef ptr;
+    switch (target->class) {
+    case CLASS_ALLOCA:
+        ptr = target->llvm;
+        break;
+    case CLASS_LVALUE:
+        ptr = target->lvalue_ptr;
+        break;
+    default:
+        err_rvalue_assign(S, &target->type);
+        return invalid_value();
+    }
+
+    Value loaded = try_load(S, from);
+
+    if (!type_can_convert(S, &loaded.type, &target->type)) {
+        puts("yeah");
+        gramina_trigger_debugger();
+        err_implicit_conv(S, &loaded.type, &target->type);
+        value_free(&loaded);
+        return invalid_value();
+    }
+
+    convert_inplace(S, &loaded, &target->type);
+
+    store(S, &loaded, ptr);
+    // LLVMBuildStore(S->llvm_builder, value.llvm, ptr);
+
+    loaded.class = CLASS_RVALUE;
+
+    return loaded;
+}
+
+static Value assign_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     Value target = expression(S, function, this->left);
 
     push_reflection(S, &target.type);
@@ -749,51 +866,23 @@ static Value assign(CompilerState *S, LLVMValueRef function, AstNode *this) {
     --S->reflection_depth;
     pop_reflection(S);
 
-    LLVMValueRef ptr;
-    switch (target.class) {
-    case CLASS_ALLOCA:
-        ptr = target.llvm;
-        break;
-    case CLASS_LVALUE:
-        ptr = target.lvalue_ptr;
-        break;
-    default:
-        err_rvalue_assign(S, &target.type, this->pos);
-        value_free(&target);
-        value_free(&value);
-        return invalid_value();
-    }
-
-    try_load_inplace(S, &value);
-
-    if (!type_can_convert(S, &value.type, &target.type)) {
-        err_implicit_conv(S, &value.type, &target.type, this->pos);
-        value_free(&target);
-        value_free(&value);
-        return invalid_value();
-    }
-
-    convert_inplace(S, &value, &target.type);
-
-    store(S, &value, ptr);
-    // LLVMBuildStore(S->llvm_builder, value.llvm, ptr);
-
-    Value ret = value_dup(&value);
-    ret.class = CLASS_RVALUE;
+    Value ret = assign(S, &target, &value);
 
     value_free(&value);
     value_free(&target);
 
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
     return ret;
 }
 
-static Value deref(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value operand = expression(S, function, this->left);
-
-    try_load_inplace(S, &operand);
+static Value deref(CompilerState *S, const Value *_operand) {
+    Value operand = try_load(S, _operand);
 
     if (operand.type.kind != GRAMINA_TYPE_POINTER) {
-        err_deref(S, &operand.type, this->pos);
+        err_deref(S, &operand.type);
         value_free(&operand);
         return invalid_value();
     }
@@ -826,11 +915,24 @@ static Value deref(CompilerState *S, LLVMValueRef function, AstNode *this) {
     return ret;
 }
 
-static Value primitive_comparison(CompilerState *S, const Value *left, const Value *right, AstNode *this) {
+static Value deref_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value operand = expression(S, function, this->left);
+    Value ret = deref(S, &operand);
+
+    value_free(&operand);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
+static Value primitive_comparison(CompilerState *S, const Value *left, const Value *right, ComparisonOp operation) {
     Value lhs;
     Value rhs;
 
-    CoercionResult coerced = coerce_primitives(S, left, right, &lhs, &rhs, this);
+    CoercionResult coerced = coerce_primitives(S, left, right, &lhs, &rhs);
     if (!value_is_valid(&lhs) || !value_is_valid(&rhs) || coerced.greater_type.kind == GRAMINA_TYPE_INVALID) {
         return invalid_value();
     }
@@ -842,29 +944,29 @@ static Value primitive_comparison(CompilerState *S, const Value *left, const Val
 
     if (integral) {
         LLVMIntPredicate op;
-        switch (this->type) {
-        case GRAMINA_AST_OP_EQUAL:
+        switch (operation) {
+        case OP_EQUAL:
             op = LLVMIntEQ;
             break;
-        case GRAMINA_AST_OP_INEQUAL:
+        case OP_INEQUAL:
             op = LLVMIntNE;
             break;
-        case GRAMINA_AST_OP_GT:
+        case OP_GT:
             op = signedness
                ? LLVMIntSGT
                : LLVMIntUGT;
             break;
-        case GRAMINA_AST_OP_GTE:
+        case OP_GTE:
             op = signedness
                ? LLVMIntSGE
                : LLVMIntUGE;
             break;
-        case GRAMINA_AST_OP_LT:
+        case OP_LT:
             op = signedness
                ? LLVMIntSLT
                : LLVMIntULT;
             break;
-        case GRAMINA_AST_OP_LTE:
+        case OP_LTE:
             op = signedness
                ? LLVMIntSLE
                : LLVMIntULE;
@@ -876,23 +978,23 @@ static Value primitive_comparison(CompilerState *S, const Value *left, const Val
         result = LLVMBuildICmp(S->llvm_builder, op, lhs.llvm, rhs.llvm, "");
     } else {
         LLVMRealPredicate op;
-        switch (this->type) {
-        case GRAMINA_AST_OP_EQUAL:
+        switch (operation) {
+        case OP_EQUAL:
             op = LLVMRealOEQ;
             break;
-        case GRAMINA_AST_OP_INEQUAL:
+        case OP_INEQUAL:
             op = LLVMRealONE;
             break;
-        case GRAMINA_AST_OP_GT:
+        case OP_GT:
             op = LLVMRealOGT;
             break;
-        case GRAMINA_AST_OP_GTE:
+        case OP_GTE:
             op = LLVMRealOGE;
             break;
-        case GRAMINA_AST_OP_LT:
+        case OP_LT:
             op = LLVMRealOLT;
             break;
-        case GRAMINA_AST_OP_LTE:
+        case OP_LTE:
             op = LLVMRealOLE;
             break;
         default:
@@ -916,15 +1018,12 @@ static Value primitive_comparison(CompilerState *S, const Value *left, const Val
     return ret;
 }
 
-static Value comparison(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value left = expression(S, function, this->left);
-    Value right = expression(S, function, this->right);
+static Value comparison(CompilerState *S, const Value *lhs, const Value *rhs, ComparisonOp operation) {
+    if (lhs->type.kind == GRAMINA_TYPE_PRIMITIVE && rhs->type.kind == GRAMINA_TYPE_PRIMITIVE) {
+        Value left = try_load(S, lhs);
+        Value right = try_load(S, rhs);
 
-    if (left.type.kind == GRAMINA_TYPE_PRIMITIVE && right.type.kind == GRAMINA_TYPE_PRIMITIVE) {
-        try_load_inplace(S, &left);
-        try_load_inplace(S, &right);
-
-        Value ret = primitive_comparison(S, &left, &right, this);
+        Value ret = primitive_comparison(S, &left, &right, operation);
 
         value_free(&left);
         value_free(&right);
@@ -932,43 +1031,40 @@ static Value comparison(CompilerState *S, LLVMValueRef function, AstNode *this) 
         return ret;
     }
 
-    if (left.type.kind == GRAMINA_TYPE_POINTER && right.type.kind == GRAMINA_TYPE_POINTER) {
-        if (!type_is_same(left.type.pointer_type, right.type.pointer_type)) {
-            StringView op = get_op(this->type);
-            err_illegal_op(S, &left.type, &right.type, &op, this->pos);
-
-            value_free(&left);
-            value_free(&right);
+    if (lhs->type.kind == GRAMINA_TYPE_POINTER && rhs->type.kind == GRAMINA_TYPE_POINTER) {
+        if (!type_is_same(lhs->type.pointer_type, rhs->type.pointer_type)) {
+            StringView op_str = get_comparison_op(operation);
+            err_illegal_op(S, &lhs->type, &rhs->type, &op_str);
 
             return invalid_value();
         }
 
         LLVMIntPredicate op;
-        switch (this->type) {
-        case GRAMINA_AST_OP_EQUAL:
+        switch (operation) {
+        case OP_EQUAL:
             op = LLVMIntEQ;
             break;
-        case GRAMINA_AST_OP_INEQUAL:
+        case OP_INEQUAL:
             op = LLVMIntNE;
             break;
-        case GRAMINA_AST_OP_GT:
+        case OP_GT:
             op = LLVMIntUGT;
             break;
-        case GRAMINA_AST_OP_GTE:
+        case OP_GTE:
             op = LLVMIntUGE;
             break;
-        case GRAMINA_AST_OP_LT:
+        case OP_LT:
             op = LLVMIntULT;
             break;
-        case GRAMINA_AST_OP_LTE:
+        case OP_LTE:
             op = LLVMIntULE;
             break;
         default:
             break;
         }
 
-        try_load_inplace(S, &left);
-        try_load_inplace(S, &right);
+        Value left = try_load(S, lhs);
+        Value right = try_load(S, rhs);
 
         LLVMValueRef result = LLVMBuildICmp(S->llvm_builder, op, left.llvm, right.llvm, "");
         Value ret = {
@@ -986,14 +1082,27 @@ static Value comparison(CompilerState *S, LLVMValueRef function, AstNode *this) 
     return invalid_value();
 }
 
-static Value unary_arithmetic(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value operand = expression(S, function, this->left);
+static Value comparison_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value left = expression(S, function, this->left);
+    Value right = expression(S, function, this->right);
+    Value ret = comparison(S, &left, &right, get_op_from_ast_node(this));
 
-    try_load_inplace(S, &operand);
+    value_free(&left);
+    value_free(&right);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return invalid_value();
+}
+
+static Value unary_arithmetic(CompilerState *S, const Value *_operand, ArithmeticUnOp op) {
+    Value operand = try_load(S, _operand);
 
     if (operand.type.kind == GRAMINA_TYPE_PRIMITIVE) {
-        switch (this->type) {
-        case GRAMINA_AST_OP_UNARY_PLUS: {
+        switch (op) {
+        case OP_IDENTITY: {
             Value ret = {
                 .type = type_dup(&operand.type),
                 .llvm = operand.llvm,
@@ -1004,9 +1113,9 @@ static Value unary_arithmetic(CompilerState *S, LLVMValueRef function, AstNode *
 
             return ret;
         }
-        case GRAMINA_AST_OP_UNARY_MINUS: {
+        case OP_NEGATION: {
             if (primitive_is_unsigned(operand.type.primitive)) {
-                puts_err(S, str_cfmt("use of unary minus '-' on unsigned type"), this->pos);
+                puts_err(S, str_cfmt("use of unary minus '-' on unsigned type"));
                 S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
                 return invalid_value();
             }
@@ -1036,14 +1145,27 @@ static Value unary_arithmetic(CompilerState *S, LLVMValueRef function, AstNode *
     return invalid_value();
 }
 
-static Value binary_logic(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value lhs = expression(S, function, this->left);
-    Value rhs = expression(S, function, this->right);
+static Value unary_arithmetic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value operand = expression(S, function, this->left);
+    Value ret = unary_arithmetic(S, &operand, get_op_from_ast_node(this));
+
+    value_free(&operand);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
+static Value binary_logic(CompilerState *S, const Value *_lhs, const Value *_rhs, LogicalBinOp operation) {
+    Value lhs = try_load(S, _lhs);
+    Value rhs = try_load(S, _rhs);
 
     Type bool_type = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
 
     if (!type_can_convert(S, &lhs.type, &bool_type)) {
-        err_explicit_conv(S, &lhs.type, &bool_type, this->left->pos);
+        err_explicit_conv(S, &lhs.type, &bool_type);
 
         type_free(&bool_type);
         value_free(&lhs);
@@ -1053,7 +1175,7 @@ static Value binary_logic(CompilerState *S, LLVMValueRef function, AstNode *this
     }
 
     if (!type_can_convert(S, &rhs.type, &bool_type)) {
-        err_explicit_conv(S, &rhs.type, &bool_type, this->right->pos);
+        err_explicit_conv(S, &rhs.type, &bool_type);
 
         type_free(&bool_type);
         value_free(&lhs);
@@ -1070,14 +1192,14 @@ static Value binary_logic(CompilerState *S, LLVMValueRef function, AstNode *this
 
     LLVMValueRef result;
 
-    switch (this->type) {
-    case GRAMINA_AST_OP_LOGICAL_OR:
+    switch (operation) {
+    case OP_L_OR:
         result = LLVMBuildOr(S->llvm_builder, lhs.llvm, rhs.llvm, "");
         break;
-    case GRAMINA_AST_OP_LOGICAL_XOR:
+    case OP_L_XOR:
         result = LLVMBuildXor(S->llvm_builder, lhs.llvm, rhs.llvm, "");
         break;
-    case GRAMINA_AST_OP_LOGICAL_AND:
+    case OP_L_AND:
         result = LLVMBuildAnd(S->llvm_builder, lhs.llvm, rhs.llvm, "");
         break;
     default:
@@ -1097,6 +1219,22 @@ static Value binary_logic(CompilerState *S, LLVMValueRef function, AstNode *this
 
     value_free(&lhs);
     value_free(&rhs);
+
+    return ret;
+}
+
+static Value binary_logic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value lhs = expression(S, function, this->left);
+    Value rhs = expression(S, function, this->right);
+
+    Value ret = binary_logic(S, &lhs, &rhs, get_op_from_ast_node(this));
+
+    value_free(&lhs);
+    value_free(&rhs);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
 
     return ret;
 }
@@ -1121,7 +1259,8 @@ static bool convert_nodes_to_params(CompilerState *S, Identifier *func, Value *a
         Type *got = &arguments[i].type;
 
         if (!type_can_convert(S, got, expected)) {
-            err_implicit_conv(S, got, expected, param->pos);
+            err_implicit_conv(S, got, expected);
+            S->error.pos = param->pos;
             return false;
         }
 
@@ -1136,7 +1275,8 @@ static bool collect_params(CompilerState *S, AstNode *this, AstNode **params, si
     AstNode *current = this->right;
     for (size_t i = 0; i < n_params; ++i) {
         if (!current) {
-            err_insufficient_args(S, n_params, i, this->pos);
+            err_insufficient_args(S, n_params, i);
+            S->error.pos = this->pos;
             return false;
         }
 
@@ -1151,14 +1291,15 @@ static bool collect_params(CompilerState *S, AstNode *this, AstNode **params, si
 
     if (current && current->parent->type == GRAMINA_AST_EXPRESSION_LIST
      || n_params == 0 && this->right != NULL) {
-        err_excess_args(S, n_params, this->pos);
+        err_excess_args(S, n_params);
+        S->error.pos = this->pos;
         return false;
     }
 
     return true;
 }
 
-static Value call(CompilerState *S, Identifier *func, Value *args, size_t n_params) {
+static Value call(CompilerState *S, Identifier *func, const Value *args, size_t n_params) {
     bool is_sret = func->type.return_type->kind == GRAMINA_TYPE_STRUCT;
 
     // In all cases, `llvm_args[0]` is reserved for sret
@@ -1169,7 +1310,13 @@ static Value call(CompilerState *S, Identifier *func, Value *args, size_t n_para
                  : NULL;
 
     for (size_t i = 1; i < n_params + 1; ++i) {
-        llvm_args[i] = args[i - 1].llvm;
+        if (args[i - 1].class == CLASS_ALLOCA) {
+            Value loaded = try_load(S, &args[i - 1]);
+            llvm_args[i] = loaded.llvm;
+            value_free(&loaded);
+        } else {
+            llvm_args[i] = args[i - 1].llvm;
+        }
     }
 
     LLVMValueRef result = LLVMBuildCall2(
@@ -1200,12 +1347,14 @@ static Value fn_call_expr(CompilerState *S, LLVMValueRef function, AstNode *this
     Identifier *func = resolve(S, &func_name);
 
     if (!func) {
-        err_undeclared_ident(S, &func_name, this->left->pos);
+        err_undeclared_ident(S, &func_name);
+        S->error.pos = this->left->pos;
         return invalid_value();
     }
 
     if (func->kind != GRAMINA_IDENT_KIND_FUNC) {
-        err_cannot_call(S, &func->type, this->left->pos);
+        err_cannot_call(S, &func->type);
+        S->error.pos = this->left->pos;
         return invalid_value();
     }
 
@@ -1231,15 +1380,15 @@ static Value fn_call_expr(CompilerState *S, LLVMValueRef function, AstNode *this
     return ret;
 }
 
-static Value member(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    Value lhs = expression(S, function, this->left);
+static Value member(CompilerState *S, const Value *operand, const StringView *field_name) {
+    Value lhs = try_load(S, operand);
 
     bool ptr_to_struct = lhs.type.kind == GRAMINA_TYPE_POINTER
                       && lhs.type.pointer_type->kind == GRAMINA_TYPE_STRUCT;
 
     // Pointer to struct and struct is pretty much the same thing in LLVM
     if (lhs.type.kind != GRAMINA_TYPE_STRUCT && !ptr_to_struct) {
-        err_cannot_have_member(S, &lhs.type, this->pos);
+        err_cannot_have_member(S, &lhs.type);
         value_free(&lhs);
         return invalid_value();
     }
@@ -1252,10 +1401,9 @@ static Value member(CompilerState *S, LLVMValueRef function, AstNode *this) {
                       ? lhs.type.pointer_type
                       : &lhs.type;
 
-    StringView rhs = str_as_view(&this->right->value.identifier);
-    StructField *field = hashmap_get(&struct_type->fields, rhs);
+    StructField *field = hashmap_get(&struct_type->fields, *field_name);
     if (!field) {
-        err_no_field(S, &lhs.type, &rhs, this->pos);
+        err_no_field(S, &lhs.type, field_name);
         value_free(&lhs);
 
         return invalid_value();
@@ -1288,6 +1436,20 @@ static Value member(CompilerState *S, LLVMValueRef function, AstNode *this) {
     return ret;
 }
 
+static Value member_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value lhs = expression(S, function, this->left);
+    StringView rhs = str_as_view(&this->right->value.identifier);
+    Value ret = member(S, &lhs, &rhs);
+
+    value_free(&lhs);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
 static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
     switch (this->type) {
     case GRAMINA_AST_IDENTIFIER: {
@@ -1295,7 +1457,8 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
         Identifier *ident = resolve(S, &name);
 
         if (!ident) {
-            err_undeclared_ident(S, &name, this->pos);
+            err_undeclared_ident(S, &name);
+            S->error.pos = this->pos;
             return invalid_value();
         }
 
@@ -1358,29 +1521,29 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
     case GRAMINA_AST_OP_MUL:
     case GRAMINA_AST_OP_DIV:
     case GRAMINA_AST_OP_REM:
-        return arithmetic(S, function, this);
+        return arithmetic_expr(S, function, this);
     case GRAMINA_AST_OP_CAST:
-        return cast(S, function, this);
+        return cast_expr(S, function, this);
     case GRAMINA_AST_OP_ADDRESS_OF:
-        return address_of(S, function, this);
+        return address_of_expr(S, function, this);
     case GRAMINA_AST_OP_DEREF:
-        return deref(S, function, this);
+        return deref_expr(S, function, this);
     case GRAMINA_AST_OP_ASSIGN:
-        return assign(S, function, this);
+        return assign_expr(S, function, this);
     case GRAMINA_AST_OP_EQUAL:
     case GRAMINA_AST_OP_INEQUAL:
     case GRAMINA_AST_OP_GT:
     case GRAMINA_AST_OP_GTE:
     case GRAMINA_AST_OP_LT:
     case GRAMINA_AST_OP_LTE:
-        return comparison(S, function, this);
+        return comparison_expr(S, function, this);
     case GRAMINA_AST_OP_UNARY_PLUS:
     case GRAMINA_AST_OP_UNARY_MINUS:
-        return unary_arithmetic(S, function, this);
+        return unary_arithmetic_expr(S, function, this);
     case GRAMINA_AST_OP_LOGICAL_OR:
     case GRAMINA_AST_OP_LOGICAL_XOR:
     case GRAMINA_AST_OP_LOGICAL_AND:
-        return binary_logic(S, function, this);
+        return binary_logic_expr(S, function, this);
     case GRAMINA_AST_OP_CALL:
         if (this->left->type == GRAMINA_AST_IDENTIFIER) {
             return fn_call_expr(S, function, this);
@@ -1388,21 +1551,42 @@ static Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) 
 
         return invalid_value();
     case GRAMINA_AST_OP_MEMBER:
-        return member(S, function, this);
+        return member_expr(S, function, this);
     default:
-        err_illegal_node(S, this);
+        err_illegal_node(S, this->type);
+        S->error.pos = this->pos;
         return invalid_value();
     }
 }
 
-static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) {
-    StringView name = str_as_view(&this->left->value.identifier);
-
+static Identifier *declaration(CompilerState *S, const StringView *name, const Type *type, const Value *init) {
     Scope *scope = CURRENT_SCOPE(S);
-    if (hashmap_get(&scope->identifiers, name)) {
-        err_redeclaration(S, &name, this->left->pos);
-        return;
+    if (hashmap_get(&scope->identifiers, *name)) {
+        err_redeclaration(S, name);
+        return NULL;
     }
+
+    Identifier *ident = gramina_malloc(sizeof *ident);
+    *ident = (Identifier) {
+        .kind = GRAMINA_IDENT_KIND_VAR,
+        .type = type_dup(type),
+    };
+
+    char *cname = sv_to_cstr(name);
+    ident->llvm = LLVMBuildAlloca(S->llvm_builder, ident->type.llvm, cname);
+    gramina_free(cname);
+
+    if (init) {
+        store(S, init, ident->llvm);
+    }
+
+    hashmap_set(&scope->identifiers, *name, ident);
+
+    return ident;
+}
+
+static void declaration_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    StringView name = str_as_view(&this->left->value.identifier);
 
     Type ident_type = type_from_ast_node(S, this->left->left);
     if (S->has_error) {
@@ -1428,7 +1612,8 @@ static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) 
         }
 
         if (!type_can_convert(S, &value.type, &ident_type)) {
-            err_implicit_conv(S, &value.type, &ident_type, this->left->pos);
+            err_implicit_conv(S, &value.type, &ident_type);
+            S->error.pos = this->left->pos;
             type_free(&ident_type);
             type_free(&value.type);
             return;
@@ -1437,28 +1622,13 @@ static void declaration(CompilerState *S, LLVMValueRef function, AstNode *this) 
         convert_inplace(S, &value, &ident_type);
     }
 
-    scope = CURRENT_SCOPE(S); // `gramina_realloc` may invalidate the previous pointer
-
-    Identifier *ident = gramina_malloc(sizeof *ident);
-    *ident = (Identifier) {
-        .kind = GRAMINA_IDENT_KIND_VAR,
-        .type = ident_type,
-    };
-
-    char *cname = sv_to_cstr(&name);
-    ident->llvm = LLVMBuildAlloca(S->llvm_builder, ident->type.llvm, cname);
-    gramina_free(cname);
-
-    if (initialised) {
-        store(S, &value, ident->llvm);
-        // LLVMBuildStore(S->llvm_builder, value.llvm, ident->llvm);
-    }
-
-    hashmap_set(&scope->identifiers, name, ident);
+    declaration(S, &name, &ident_type, initialised ? &value : NULL);
 
     if (initialised) {
         value_free(&value);
     }
+
+    type_free(&ident_type);
 }
 
 static void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
@@ -1467,7 +1637,8 @@ static void return_statement(CompilerState *S, LLVMValueRef function, AstNode *t
 
     if (REFLECT(reflection_index)->type.kind == GRAMINA_TYPE_VOID) {
         if (this->left) {
-            putcs_err(S, "return statement cannot have expression in function of type 'void'", this->left->pos);
+            putcs_err(S, "return statement cannot have expression in function of type 'void'");
+            S->error.pos = this->left->pos;
             S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
             return;
         }
@@ -1482,7 +1653,8 @@ static void return_statement(CompilerState *S, LLVMValueRef function, AstNode *t
     }
 
     if (!type_can_convert(S, &exp.type, &REFLECT(reflection_index)->type)) {
-        err_implicit_conv(S, &exp.type, &REFLECT(reflection_index)->type, this->left->pos);
+        err_implicit_conv(S, &exp.type, &REFLECT(reflection_index)->type);
+        S->error.pos = this->left->pos;
         value_free(&exp);
         return;
     }
@@ -1525,7 +1697,8 @@ static void if_statement(CompilerState *S, LLVMValueRef function, AstNode *this)
 
     Type bool_type = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
     if (!type_can_convert(S, &condition.type, &bool_type)) {
-        err_implicit_conv(S, &condition.type, &bool_type, this->left->pos);
+        err_implicit_conv(S, &condition.type, &bool_type);
+        S->error.pos = this->left->pos;
 
         value_free(&condition);
         type_free(&bool_type);
@@ -1589,7 +1762,8 @@ static void while_statement(CompilerState *S, LLVMValueRef function, AstNode *th
 
     Type bool_type = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
     if (!type_can_convert(S, &condition.type, &bool_type)) {
-        err_implicit_conv(S, &condition.type, &bool_type, this->left->pos);
+        err_implicit_conv(S, &condition.type, &bool_type);
+        S->error.pos = this->left->pos;
 
         value_free(&condition);
         type_free(&bool_type);
@@ -1622,7 +1796,7 @@ static void for_statement(CompilerState *S, LLVMValueRef function, AstNode *this
     LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(function, "for_body");
     LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(function, "for_exit");
 
-    declaration(S, function, this->left->left);
+    declaration_statement(S, function, this->left->left);
 
     LLVMBuildBr(S->llvm_builder, condition_block);
 
@@ -1631,7 +1805,8 @@ static void for_statement(CompilerState *S, LLVMValueRef function, AstNode *this
 
     Type bool_type = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
     if (!type_can_convert(S, &predicate.type, &bool_type)) {
-        err_implicit_conv(S, &predicate.type, &bool_type, this->left->right->left->pos);
+        err_implicit_conv(S, &predicate.type, &bool_type);
+        S->error.pos = this->left->right->left->pos;
 
         value_free(&predicate);
         type_free(&bool_type);
@@ -1674,7 +1849,7 @@ static bool block(CompilerState *S, LLVMValueRef function, AstNode *this) {
         StringView type = ast_node_type_to_str(cur->type);
         switch (cur->type) {
         case GRAMINA_AST_DECLARATION_STATEMENT:
-            declaration(S, function, cur);
+            declaration_statement(S, function, cur);
             break;
         case GRAMINA_AST_EXPRESSION_STATEMENT: {
             Value result = expression(S, function, cur->left);
@@ -1701,7 +1876,7 @@ static bool block(CompilerState *S, LLVMValueRef function, AstNode *this) {
             }
             break;
         default:
-            err_illegal_node(S, cur);
+            err_illegal_node(S, cur->type);
             break;
         }
     } while ((cur = cur->right) && !S->status);
@@ -1791,7 +1966,8 @@ static bool validate_attributes(CompilerState *S, const Array(_GraminaSymAttr) *
         case GRAMINA_ATTRIBUTE_METHOD:
             if (!attrib->string.data) {
                 StringView name = mk_sv_c("method");
-                err_no_attrib_arg(S, &name, pos);
+                err_no_attrib_arg(S, &name);
+                S->error.pos = pos;
                 return false;
             }
 
@@ -1811,7 +1987,8 @@ static void function_def(CompilerState *S, AstNode *this) {
     StringView name = str_as_view(&this->value.identifier);
 
     if (hashmap_get(&CURRENT_SCOPE(S)->identifiers, name)) {
-        err_redeclaration(S, &name, this->left->pos);
+        err_redeclaration(S, &name);
+        S->error.pos = this->left->pos;
         type_free(&fn_type);
         return;
     }
@@ -1870,7 +2047,8 @@ static void function_def(CompilerState *S, AstNode *this) {
         if (fn_type.return_type->kind == GRAMINA_TYPE_VOID) {
             LLVMBuildRetVoid(S->llvm_builder);
         } else {
-            err_missing_ret(S, fn_type.return_type, this->pos);
+            err_missing_ret(S, fn_type.return_type);
+            S->error.pos = this->pos;
         }
     }
 
