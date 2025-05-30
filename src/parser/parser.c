@@ -458,7 +458,43 @@ static AstNode *global_statement(ParserState *S) {
             return NULL;
         }
 
-        StringView attrib_name = str_as_view(&CURRENT(S).contents);
+        const Token *attrib_tok = &CURRENT(S);
+        CONSUME(S);
+
+        StringView contents = mk_sv_c("");
+
+        if (CURRENT(S).type == GRAMINA_TOK_PAREN_LEFT) {
+            CONSUME(S);
+
+            if (CURRENT(S).type != GRAMINA_TOK_LIT_STR_DOUBLE) {
+                SET_ERR(S, mk_str_c("expected string literal"));
+
+                array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+                    symattr_free(attr);
+                }
+
+                array_free(_GraminaSymAttr, &attribs);
+                return NULL;
+            }
+
+            contents = str_as_view(&CURRENT(S).contents);
+            CONSUME(S);
+
+            if (CURRENT(S).type != GRAMINA_TOK_PAREN_RIGHT) {
+                SET_ERR(S, mk_str_c("expected ')'"));
+
+                array_foreach_ref(_GraminaSymAttr, _, attr, attribs) {
+                    symattr_free(attr);
+                }
+
+                array_free(_GraminaSymAttr, &attribs);
+                return NULL;
+            }
+
+            CONSUME(S);
+        }
+
+        StringView attrib_name = str_as_view(&attrib_tok->contents);
         SymbolAttributeKind kind = get_attrib_kind(&attrib_name);
         if (kind == GRAMINA_ATTRIBUTE_NONE) {
             SET_ERR(S, str_cfmt("unknown attribute '{sv}'", &attrib_name));
@@ -473,11 +509,17 @@ static AstNode *global_statement(ParserState *S) {
 
         SymbolAttribute attrib = {
             .kind = kind,
+            .string = {
+                .length = 0,
+                .data = 0,
+            },
         };
 
-        array_append(_GraminaSymAttr, &attribs, attrib);
+        if (contents.data) {
+            attrib.string = sv_dup(&contents);
+        }
 
-        CONSUME(S);
+        array_append(_GraminaSymAttr, &attribs, attrib);
     }
 
     switch (CURRENT(S).type) {

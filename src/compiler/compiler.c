@@ -16,6 +16,7 @@
 #include "compiler/type.h"
 
 #include "parser/ast.h"
+#include "parser/attributes.h"
 
 GRAMINA_IMPLEMENT_ARRAY(_GraminaReflection);
 
@@ -228,6 +229,11 @@ static void err_insufficient_args(CompilerState *S, size_t wants, size_t got, To
 static void err_excess_args(CompilerState *S, size_t wants, TokenPosition pos) {
     puts_err(S, str_cfmt("function call expected {sz} argumen{cstr}, got more", wants, wants == 1 ? "t" : "ts"), pos);
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+static void err_no_attrib_arg(CompilerState *S, const StringView *attrib_name, TokenPosition pos) {
+    puts_err(S, str_cfmt("attribute '{sv}' needs an argument"), pos);
+    S->status = GRAMINA_COMPILE_ERR_MISSING_ATTRIB_ARG;
 }
 
 static void dbg_print_val(const char *fmt, LLVMValueRef val) {
@@ -1779,6 +1785,25 @@ static void register_params(CompilerState *S, LLVMValueRef func, const Type *fn_
     array_free(String, &param_names);
 }
 
+static bool validate_attributes(CompilerState *S, const Array(_GraminaSymAttr) *attribs, TokenPosition pos) {
+    array_foreach_ref(_GraminaSymAttr, _, attrib, *attribs) {
+        switch (attrib->kind) {
+        case GRAMINA_ATTRIBUTE_METHOD:
+            if (!attrib->string.data) {
+                StringView name = mk_sv_c("method");
+                err_no_attrib_arg(S, &name, pos);
+                return false;
+            }
+
+            break;
+        default:
+            break;
+        }
+    }
+
+    return true;
+}
+
 static void function_def(CompilerState *S, AstNode *this) {
     Type fn_type = type_from_ast_node(S, this->left);
     bool sret = fn_type.return_type->kind == GRAMINA_TYPE_STRUCT;
@@ -1815,6 +1840,8 @@ static void function_def(CompilerState *S, AstNode *this) {
     };
 
     this->value.attributes = mk_array(_GraminaSymAttr); // We are essentially moving the array
+
+    validate_attributes(S, &this->value.attributes, this->pos);
 
     Scope *parent_scope = CURRENT_SCOPE(S);
     hashmap_set(&parent_scope->identifiers, name, fn_ident);
@@ -1966,6 +1993,8 @@ StringView gramina_compile_error_code_to_str(CompileErrorCode e) {
         return mk_sv_c("MISSING_RETURN");
     case GRAMINA_COMPILE_ERR_INCOMPATIBLE_VALUE_CLASS:
         return mk_sv_c("INCOMPATIBLE_VALUE_CLASS");
+    case GRAMINA_COMPILE_ERR_MISSING_ATTRIB_ARG:
+        return mk_sv_c("MISSING_ATTRIB_ARG");
     default:
         return mk_sv_c("UNKNOWN");
     }

@@ -33,7 +33,8 @@ static void show_general_help() {
         "\t--help [topic?]                  Show this message or help on a specific topic\n"
         "\t-v, --verbose                    Enable verbose logging\n"
         "\t--log-level [level]              Set the log level (`--help log-level` for more information)\n"
-        "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n";
+        "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n"
+        "\t--ast-dump [file]                Prints the created AST into the given file\n";
 
     printf("%s", help);
 }
@@ -45,7 +46,7 @@ static void show_specific_help(const char *topic) {
             "List of available levels:\n"
             "\tall (equivalent to '-v' and '--verbose')\n"
             "\tinfo\n"
-            "\twarn\n"
+            "\twarn (default)\n"
             "\terror\n"
             "\tsilent (disables all logs except ones which shouldn't be ignored)\n"
             "\tnone (disables every level of logging)\n";
@@ -110,6 +111,7 @@ int main(int argc, char **argv) {
         VERBOSE_ARG,
         OUT_FILE_ARG,
         LOG_LEVEL_ARG,
+        AST_DUMP_ARG,
     };
 
     ArgumentInfo argument_info[] = {
@@ -131,6 +133,11 @@ int main(int argc, char **argv) {
         },
         [LOG_LEVEL_ARG] = {
             .name = "log-level",
+            .type = GRAMINA_ARG_LONG,
+            .param_needs = GRAMINA_PARAM_REQUIRED,
+        },
+        [AST_DUMP_ARG] = {
+            .name = "ast-dump",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
         },
@@ -168,6 +175,7 @@ int main(int argc, char **argv) {
     ArgumentInfo *outfile_arg = &args.named.items[OUT_FILE_ARG];
     ArgumentInfo *log_level_arg = &args.named.items[LOG_LEVEL_ARG];
     ArgumentInfo *verbose_arg = &args.named.items[VERBOSE_ARG];
+    ArgumentInfo *ast_dump_arg = &args.named.items[AST_DUMP_ARG];
 
     const char *source = args.positional.items[0];
     const char *outfile = outfile_arg->found
@@ -211,13 +219,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    args_free(&args);
-
     int status = 0;
 
     Stream file = mk_stream_open_c(source, "r");
     if (!stream_file_is_valid(&file)) {
         elog_fmt("Cannot open file '{cstr}': {cstr}\n", source, strerror(errno));
+        args_free(&args);
         return -1;
     }
 
@@ -246,6 +253,7 @@ int main(int argc, char **argv) {
         stream_free(&file);
         stream_free(&verbose_printer);
         lex_result_free(&lex_result);
+        args_free(&args);
 
         return status;
     }
@@ -285,6 +293,13 @@ int main(int argc, char **argv) {
     stream_write_cstr(&verbose_printer, "AST dump:\n");
     ast_print(root, &verbose_printer);
 
+    if (ast_dump_arg->found) {
+        Stream file = mk_stream_open_c(ast_dump_arg->param, "w");
+        ast_print(root, &file);
+        stream_flush(&file);
+        stream_free(&file);
+    }
+
     ilog_fmt("Entering the compilation phase...\n");
 
     CompileResult cresult = compile(root);
@@ -307,6 +322,8 @@ int main(int argc, char **argv) {
         status = 1;
 
         str_free(&cresult.error.description);
+
+        goto _cleanup;
     }
 
     ilog_fmt("Compilation finished!\n");
@@ -326,6 +343,8 @@ int main(int argc, char **argv) {
     stream_free(&verbose_printer);
 
     LLVMDisposeModule(cresult.module);
+
+    args_free(&args);
 
     return status;
 }
