@@ -10,3 +10,4 @@ void gramina_push_reflection(struct gramina_compiler_state *S, const struct gram
 void gramina_pop_reflection(struct gramina_compiler_state *S);
 
 #endif
+#include "gen/compiler/stackops.h"

@@ -24,6 +24,9 @@ struct gramina_value {
 };
 
 bool gramina_value_is_valid(const struct gramina_value *this);
+void gramina_value_free(struct gramina_value *this);
+struct gramina_value gramina_value_dup(const struct gramina_value *this);
 struct gramina_value gramina_invalid_value();
 
 #endif
+#include "gen/compiler/value.h"

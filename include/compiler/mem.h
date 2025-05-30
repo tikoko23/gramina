@@ -14,3 +14,4 @@ struct gramina_value grammina_address_of(struct gramina_compiler_state *S, const
 struct gramina_value grammina_deref(struct gramina_compiler_state *S, const struct gramina_value *operand);
 
 #endif
+#include "gen/compiler/mem.h"

@@ -38,3 +38,4 @@ struct gramina_string_view gramina_get_arithmetic_bin_op(enum gramina_arithmetic
 struct gramina_string_view gramina_get_comparison_bin_op(enum gramina_comparison_op op);
 
 #endif
+#include "gen/compiler/op.h"

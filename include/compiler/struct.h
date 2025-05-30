@@ -9,3 +9,4 @@ void gramina_struct_def(struct gramina_compiler_state *S, struct gramina_ast_nod
 struct gramina_value gramina_member(struct gramina_compiler_state *S, const struct gramina_value *operand, const struct gramina_string_view *field_name);
 
 #endif
+#include "gen/compiler/struct.h"

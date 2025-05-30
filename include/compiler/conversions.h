@@ -15,3 +15,4 @@ struct gramina_value gramina_pointer_to_int(struct gramina_compiler_state *S, co
 struct gramina_value gramina_cast(struct gramina_compiler_state *S, const struct gramina_value *from, const struct gramina_type *to);
 
 #endif
+#include "gen/compiler/conversions.h"

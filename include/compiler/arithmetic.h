@@ -14,3 +14,4 @@ struct gramina_value gramina_arithmetic(struct gramina_compiler_state *S, const 
 struct gramina_value gramina_unary_arithmetic(struct gramina_compiler_state *S, const struct gramina_value *operand, enum gramina_arithmetic_un_op op);
 
 #endif
+#include "gen/compiler/arithmetic.h"

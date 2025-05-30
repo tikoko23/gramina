@@ -10,3 +10,4 @@ void gramina_function_def(struct gramina_compiler_state *S, struct gramina_ast_n
 struct gramina_value gramina_call(struct gramina_compiler_state *S, const struct gramina_identifier *func, const struct gramina_value *args, size_t n_args);
 
 #endif
+#include "gen/compiler/function.h"

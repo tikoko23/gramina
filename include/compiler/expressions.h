@@ -24,3 +24,4 @@ struct gramina_value gramina_fn_call_expr(struct gramina_compiler_state *S, LLVM
 struct gramina_value gramina_member_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
 #endif
+#include "gen/compiler/expressions.h"
