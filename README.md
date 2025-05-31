@@ -55,6 +55,34 @@ To clean the generated binaries and IR inside `examples/`, run the following scr
 scripts/clean_examples.sh
 ```
 
+## Using with C
+Gramina passes struct types by pointer, independent of whether the function takes it as value.
+In such cases, the copying of the struct is automatically handled.
+However, this poses a problem when working with C.
+All structs passed to gramina functions **must** be passed by reference, otherwise the behavior is undefined.
+Functions returning structs have no issues, though.
+Such cases may automatically be supported for extern functions in the future. It is uncertain if this will be added.
+
+```lawn
+struct Vector2 {
+    float x;
+    float y;
+}
+
+fn gramina_func(Vector2 vec) {
+    // ...
+}
+```
+
+```c
+typedef struct {
+    float x, y;
+} Vector2;
+
+void gramina_func(Vector2 vec); // !! incorrect !!
+void gramina_func(Vector2 *vec); // correct
+```
+
 # Documentation
 Documentation of the language and the compiler frontend is currently lacking. Since the language is still in very early stages, significant changes are expected, thus documentation is not the top priority.
 
