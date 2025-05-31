@@ -160,6 +160,8 @@ void gramina_ast_node_free(struct gramina_ast_node *this);
 void gramina_ast_node_child_l(struct gramina_ast_node *this, struct gramina_ast_node *new_child);
 void gramina_ast_node_child_r(struct gramina_ast_node *this, struct gramina_ast_node *new_child);
 
+struct gramina_symbol_attribute *gramina_ast_node_get_symattr(const struct gramina_ast_node *this, enum gramina_symbol_attribute_kind kind);
+
 int gramina_ast_print(const struct gramina_ast_node *this, struct gramina_stream *printer);
 
 struct gramina_string_view gramina_ast_node_type_to_str(enum gramina_ast_node_type e);

@@ -114,6 +114,26 @@ void gramina_ast_node_child_r(AstNode *this, AstNode *new_child) {
     }
 }
 
+SymbolAttribute *gramina_ast_node_get_symattr(const AstNode *this, SymbolAttributeKind kind) {
+    switch (this->type) {
+    case GRAMINA_AST_IDENTIFIER:
+    case GRAMINA_AST_FUNCTION_DEF:
+    case GRAMINA_AST_FUNCTION_DECLARATION:
+    case GRAMINA_AST_STRUCT_DEF:
+        break;
+    default:
+        return NULL;
+    }
+
+    array_foreach_ref(_GraminaSymAttr, _, attr, this->value.attributes) {
+        if (attr->kind == kind) {
+            return attr;
+        }
+    }
+
+    return NULL;
+}
+
 static String ast_node_stringify(const AstNode *this) {
     String out = mk_str();
 

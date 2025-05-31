@@ -8,6 +8,8 @@
 #include "compiler/stackops.h"
 #include "compiler/statement.h"
 
+#include "parser/attributes.h"
+
 GRAMINA_DECLARE_ARRAY(String, static);
 GRAMINA_IMPLEMENT_ARRAY(String, static);
 
@@ -160,8 +162,16 @@ void function_def(CompilerState *S, AstNode *this) {
         return;
     }
 
-    char *name_cstr = sv_to_cstr(&name);
-    LLVMValueRef func = LLVMAddFunction(S->llvm_module, name_cstr, fn_type.llvm);
+    char *cname;
+    SymbolAttribute *extern_attrib;
+    if ((extern_attrib = ast_node_get_symattr(this, GRAMINA_ATTRIBUTE_EXTERN))) {
+        cname = str_to_cstr(&extern_attrib->string);
+    } else {
+        cname = sv_to_cstr(&name);
+    }
+
+    LLVMValueRef func = LLVMAddFunction(S->llvm_module, cname, fn_type.llvm);
+    gramina_free(cname);
 
     if (sret) {
         LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
@@ -172,8 +182,6 @@ void function_def(CompilerState *S, AstNode *this) {
 
         LLVMAddAttributeAtIndex(func, 1, sret_attr);
     }
-
-    gramina_free(name_cstr);
 
     Identifier *fn_ident = gramina_malloc(sizeof *fn_ident);
     *fn_ident = (Identifier) {
