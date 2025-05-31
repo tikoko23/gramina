@@ -36,7 +36,7 @@ set(LLVM_LIBS "LLVM-19")
 add_executable(test src/test.c)
 
 # TODO: Find a more compatible approach
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     target_link_libraries(test asan)
     target_compile_options(graparse PRIVATE -fsanitize=address)
     target_compile_options(gracommon PRIVATE -fsanitize=address)
