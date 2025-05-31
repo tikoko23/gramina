@@ -1,0 +1,18 @@
+struct Vector2 {
+    float x;
+    float y;
+    int a;
+}
+
+fn print_float(byte pre, float f);
+
+#extern("sqrtf")
+fn sqrt_float(float x) -> float;
+
+#extern("vec2_length")
+fn vec2Length(Vector2& v) -> float {
+    print_float('x', v.x);
+    print_float('y', v.y);
+
+    return sqrt_float(v.x * v.x + v.y * v.y);
+}
