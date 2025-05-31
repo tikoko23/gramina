@@ -69,7 +69,13 @@ struct Vector2 {
     float y;
 }
 
+// !! incorrect if called from C !!
 fn gramina_func(Vector2 vec) {
+    // ...
+}
+
+// correct
+fn gramina_func(Vector2& vec) {
     // ...
 }
 ```
