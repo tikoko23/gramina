@@ -55,9 +55,15 @@ static bool populate_arg(int argc, char **argv, size_t *i, ArgumentInfo *info, A
 
     char *potential_arg = argv[*i + 1];
     if (potential_arg[0] != '-') {
-        info->param = potential_arg;
+        if (info->param_needs != GRAMINA_PARAM_MULTI) {
+            info->param = potential_arg;
+        } else {
+            array_append(_GraminaArgString, info->multi_params, potential_arg);
+        }
+
         ++(*i);
-    } else if (info->param_needs == GRAMINA_PARAM_REQUIRED) {
+    } else if (info->param_needs == GRAMINA_PARAM_REQUIRED
+            || info->param_needs == GRAMINA_PARAM_MULTI) {
         args->error = str_cfmt(
             "Argument '{svo}' requires a parameter",
             info->type & GRAMINA_ARG_LONG
