@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "common/arg.h"
+#include "common/log.h"
 
 GRAMINA_IMPLEMENT_ARRAY(_GraminaArgInfo)
 GRAMINA_IMPLEMENT_ARRAY(_GraminaArgString)
@@ -55,9 +56,15 @@ static bool populate_arg(int argc, char **argv, size_t *i, ArgumentInfo *info, A
 
     char *potential_arg = argv[*i + 1];
     if (potential_arg[0] != '-') {
-        info->param = potential_arg;
+        if (info->param_needs != GRAMINA_PARAM_MULTI) {
+            info->param = potential_arg;
+        } else {
+            array_append(_GraminaArgString, info->multi_params, potential_arg);
+        }
+
         ++(*i);
-    } else if (info->param_needs == GRAMINA_PARAM_REQUIRED) {
+    } else if (info->param_needs == GRAMINA_PARAM_REQUIRED
+            || info->param_needs == GRAMINA_PARAM_MULTI) {
         args->error = str_cfmt(
             "Argument '{svo}' requires a parameter",
             info->type & GRAMINA_ARG_LONG
@@ -69,6 +76,27 @@ static bool populate_arg(int argc, char **argv, size_t *i, ArgumentInfo *info, A
     }
 
     return false;
+}
+
+static bool validate_arg(Arguments *S, ArgumentInfo *this) {
+    if (!this->found) {
+        return false;
+    }
+
+    StringView name = this->type & GRAMINA_ARG_LONG
+                    ? mk_sv_c(this->name)
+                    : mk_sv_buf((uint8_t *)&this->flag, 1);
+
+    switch (this->override_behavior) {
+    case GRAMINA_OVERRIDE_OK:
+        return false;
+    case GRAMINA_OVERRIDE_WARN:
+        wlog_fmt("Repeated argument: {sv}\n", &name);
+        return false;
+    case GRAMINA_OVERRIDE_FORBID:
+        S->error = str_cfmt("Repetition forbidden for argument: {sv}", &name);
+        return true;
+    }
 }
 
 bool gramina_args_parse(Arguments *this, int argc, char **argv) {
@@ -96,6 +124,10 @@ bool gramina_args_parse(Arguments *this, int argc, char **argv) {
                 return true;
             }
 
+            if (validate_arg(this, info)) {
+                return true;
+            }
+
             info->found = true;
 
             if (populate_arg(argc, argv, &i, info, this)) {
@@ -117,6 +149,10 @@ bool gramina_args_parse(Arguments *this, int argc, char **argv) {
                 ArgumentInfo *info = find_flag(this, flag);
                 if (!info) {
                     this->error = str_cfmt("Unknown flag '{c}'", flag);
+                    return true;
+                }
+
+                if (validate_arg(this, info)) {
                     return true;
                 }
 

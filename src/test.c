@@ -112,35 +112,50 @@ int main(int argc, char **argv) {
         OUT_FILE_ARG,
         LOG_LEVEL_ARG,
         AST_DUMP_ARG,
+        LINK_LIB_ARG,
     };
+
+    Array(_GraminaArgString) linked_libs = mk_array(_GraminaArgString);
 
     ArgumentInfo argument_info[] = {
         [HELP_ARG] = {
             .name = "help",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_OPTIONAL,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [VERBOSE_ARG] = {
             .name = "verbose",
             .flag = 'v',
             .type = GRAMINA_ARG_LONG | GRAMINA_ARG_FLAG,
             .param_needs = GRAMINA_PARAM_NONE,
+            .override_behavior = GRAMINA_OVERRIDE_OK,
         },
         [OUT_FILE_ARG] = {
             .flag = 'o',
             .type = GRAMINA_ARG_FLAG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [LOG_LEVEL_ARG] = {
             .name = "log-level",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [AST_DUMP_ARG] = {
             .name = "ast-dump",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
+        [LINK_LIB_ARG] = {
+            .flag = 'l',
+            .type = GRAMINA_ARG_FLAG,
+            .param_needs = GRAMINA_PARAM_MULTI,
+            .override_behavior = GRAMINA_OVERRIDE_OK,
+            .multi_params = &linked_libs,
+        }
     };
 
     Arguments args = {
@@ -224,6 +239,7 @@ int main(int argc, char **argv) {
     Stream file = mk_stream_open_c(source, "r");
     if (!stream_file_is_valid(&file)) {
         elog_fmt("Cannot open file '{cstr}': {cstr}\n", source, strerror(errno));
+        array_free(_GraminaArgString, &linked_libs);
         args_free(&args);
         return -1;
     }
@@ -253,6 +269,7 @@ int main(int argc, char **argv) {
         stream_free(&file);
         stream_free(&verbose_printer);
         lex_result_free(&lex_result);
+        array_free(_GraminaArgString, &linked_libs);
         args_free(&args);
 
         return status;
@@ -344,6 +361,7 @@ int main(int argc, char **argv) {
 
     LLVMDisposeModule(cresult.module);
 
+    array_free(_GraminaArgString, &linked_libs);
     args_free(&args);
 
     return status;
