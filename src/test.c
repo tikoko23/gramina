@@ -73,7 +73,7 @@ static void highlight_char(const char *source, size_t line, size_t column) {
     str_free(&error_msg);
 }
 
-int main(int argc, char **argv) {
+int _main(int argc, char **argv) {
     init();
     atexit(cleanup);
 
