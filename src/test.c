@@ -13,6 +13,8 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Error.h>
 
+#include "cli/help.h"
+
 #include "common/arg.h"
 #include "common/array.h"
 #include "common/error.h"
@@ -25,37 +27,6 @@
 #include "parser/ast.h"
 #include "parser/lexer.h"
 #include "parser/parser.h"
-
-static void show_general_help() {
-    const char *help =
-        "Usage: ./test [options] files...\n"
-        "Options:\n"
-        "\t--help [topic?]                  Show this message or help on a specific topic\n"
-        "\t-v, --verbose                    Enable verbose logging\n"
-        "\t--log-level [level]              Set the log level (`--help log-level` for more information)\n"
-        "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n"
-        "\t--ast-dump [file]                Prints the created AST into the given file\n";
-
-    printf("%s", help);
-}
-
-static void show_specific_help(const char *topic) {
-    if (false) {
-    } else if (strcmp(topic, "log-level") == 0) {
-        const char *log_level_help =
-            "List of available levels:\n"
-            "\tall (equivalent to '-v' and '--verbose')\n"
-            "\tinfo\n"
-            "\twarn (default)\n"
-            "\terror\n"
-            "\tsilent (disables all logs except ones which shouldn't be ignored)\n"
-            "\tnone (disables every level of logging)\n";
-
-        printf("%s", log_level_help);
-    } else {
-        elog_fmt("No specific help for topic '{cstr}'\n", topic);
-    }
-}
 
 static void highlight_char(const char *source, size_t line, size_t column) {
     FILE *file = fopen(source, "r");
@@ -172,9 +143,9 @@ int main(int argc, char **argv) {
 
     if (help_arg->found) {
         if (!help_arg->param) {
-            show_general_help();
+            cli_show_general_help();
         } else {
-            show_specific_help(help_arg->param);
+            cli_show_specific_help(help_arg->param);
         }
 
         args_free(&args);
