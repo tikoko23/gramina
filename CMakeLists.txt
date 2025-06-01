@@ -26,7 +26,7 @@ link_directories(${LLVM_LIBDIR} ${LLVM_LDFLAGS})
 include_directories("include")
 add_compile_definitions(GRAMINA_BUILD)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_definitions(GRAMINA_DEBUG_BUILD)
 endif ()
 
