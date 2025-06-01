@@ -147,7 +147,10 @@ Stream gramina_mk_stream_open(StringView filename, StringView mode) {
     str_free(&c_mode);
 
     if (!file) {
-        return (Stream) {};
+        return (Stream) {
+            .validator = __gramina_fs_validator,
+            .userdata = NULL,
+        };
     }
 
     Stream this = gramina_mk_stream_file(file, readable, writable);
@@ -190,7 +193,7 @@ bool gramina_stream_is_writable(const Stream *this) {
 
 bool gramina_stream_is_valid(const Stream *this) {
     if (!this->validator) {
-        return true;
+        return this->reader || this->writer;
     }
 
     return this->validator(this);
