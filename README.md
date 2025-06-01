@@ -17,7 +17,7 @@ The CMake configuration defines the following targets:
 - `gracommon` (static library)
 - `graparse` (static library)
 - `gracompile` (static library)
-- `test` (command line utility)
+- `gramina` (command line utility)
 
 ```bash
 cd /path/to/gramina/source
@@ -30,16 +30,18 @@ cmake --build .
 ```
 
 # Usage
-A gramina file can be compiled using the `test` binary.
+A gramina file can be compiled using the `gramina` binary.
 ```bash
-./test <filename>
+./gramina <filename>
 ```
 
-This binary prints lexer, parser and compiler information and generates an `out.ll` file.
+This binary generates an `out.ll` file.
 This file can be used with an LLVM frontend (such as clang):
 ```bash
 clang -o test_executable ./out.ll host.c
 ```
+
+Run `./gramina --help` for more information.
 
 ## Running examples
 An example consist of a `.lawn` and a `.c` file, with the same basename. Source code for the examples can be found in `examples/`.
