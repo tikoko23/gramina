@@ -1,10 +1,13 @@
-#include <llvm-c/Error.h>
+#include <llvm-c/TargetMachine.h>
+#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include <errno.h>
 #include <string.h>
 
 #include <llvm-c/Core.h>
+#include <llvm-c/Error.h>
+#include <llvm-c/Linker.h>
 
 #include "cli/highlight.h"
 #include "cli/state.h"
@@ -36,6 +39,20 @@ static const char *get_name(CompilationStageProcessor p) {
     return "UNKNOWN";
 }
 
+static char *replace_extension(const char *filename, const char *extension) {
+    char *dot_loc = strrchr(filename, '.');
+    size_t extension_start = dot_loc
+                           ? dot_loc - filename
+                           : strlen(filename);
+
+    char *buf = malloc(extension_start + strlen(extension) + 1);
+
+    memcpy(buf, filename, extension_start);
+    memcpy(buf + extension_start, extension, strlen(extension) + 1);
+
+    return buf;
+}
+
 Pipeline pipeline_default(CliState *S) {
     Pipeline P = {
         .stages = mk_array(CompilationStage),
@@ -52,7 +69,9 @@ Pipeline pipeline_default(CliState *S) {
             ? tu_ast_log
             : NULL,
         tu_compile,
-        tu_ir_dump,
+        S->ir_dump_file
+            ? tu_ir_dump
+            : NULL,
     };
 
     for (size_t i = 0; i < (sizeof stages) / (sizeof stages[0]); ++i) {
@@ -166,6 +185,9 @@ bool tu_compile(CliState *S, TranslationUnit *T) {
         return true;
     }
 
+    T->module = T->compile_result.module;
+    T->compile_result.module = NULL;
+
     return false;
 }
 
@@ -204,14 +226,114 @@ bool tu_ast_dump(CliState *S, TranslationUnit *T) {
 }
 
 bool tu_ir_dump(CliState *S, TranslationUnit *T) {
-    if (!S->out_file) {
+    if (!S->ir_dump_file) {
         return false;
     }
 
     char *err;
-    if (LLVMPrintModuleToFile(T->compile_result.module, S->out_file, &err)) {
-        elog_fmt("Failed to dump IR into '{cstr}': {cstr}\n", S->out_file, err);
+    if (LLVMPrintModuleToFile(T->module, S->ir_dump_file, &err)) {
+        elog_fmt("Failed to dump IR into '{cstr}': {cstr}\n", S->ir_dump_file, err);
         LLVMDisposeErrorMessage(err);
+        return true;
+    }
+
+    return false;
+}
+
+LLVMModuleRef tu_link(CliState *S, TranslationUnit *tus, size_t n_tus) {
+    LLVMModuleRef final_mod = tus->module;
+
+    for (size_t i = 1; i < n_tus; ++i) {
+        TranslationUnit *T = tus + i;
+
+        if (LLVMLinkModules2(final_mod, T->module)) {
+            return NULL;
+        }
+
+        T->module = NULL;
+    }
+
+    return final_mod;
+}
+
+bool tu_emit_objects(CliState *S, TranslationUnit *tus, size_t n_tus, ObjectFileType type) {
+    if (n_tus == 0) {
+        return true;
+    }
+
+    for (size_t i = 0; i < n_tus; ++i) {
+        TranslationUnit *T = tus + i;
+
+        LLVMModuleRef mod = T->module;
+
+        char *replaced = replace_extension(T->file, ".o");
+        char *err;
+
+        if (LLVMTargetMachineEmitToFile(S->machine, mod, replaced, (LLVMCodeGenFileType)type, &err)) {
+            elog_fmt("{cstr}: {cstr}\n", replaced, err);
+            LLVMDisposeErrorMessage(err);
+            LLVMDisposeTargetMachine(S->machine);
+            free(replaced);
+            return true;
+        }
+
+        free(replaced);
+    }
+
+    return false;
+}
+
+static void handler(LLVMDiagnosticInfoRef info, void *_) {
+    char *msg = LLVMGetDiagInfoDescription(info);
+    elog_fmt("LLVM: {cstr}\n", msg);
+    LLVMDisposeMessage(msg);
+}
+
+bool tu_merge(CliState *S, TranslationUnit *out, TranslationUnit *tus, size_t n_tus) {
+    if (n_tus == 0) {
+        return true;
+    }
+
+    LLVMDiagnosticHandler old_handler = LLVMContextGetDiagnosticHandler(LLVMGetGlobalContext());
+    void *old_context = LLVMContextGetDiagnosticContext(LLVMGetGlobalContext());
+
+    LLVMModuleRef mod = LLVMCloneModule(tus->module);
+    LLVMContextSetDiagnosticHandler(LLVMGetGlobalContext(), handler, NULL);
+
+    for (size_t i = 1; i < n_tus; ++i) {
+        TranslationUnit *T = tus + i;
+
+        LLVMModuleRef copy = LLVMCloneModule(T->module);
+        if (LLVMLinkModules2(mod, copy)) {
+            elog_fmt("Failed to link '{cstr}'\n", T->file);
+
+            LLVMContextSetDiagnosticHandler(LLVMGetGlobalContext(), old_handler, old_context);
+            LLVMDisposeModule(mod);
+            LLVMDisposeModule(copy);
+            return true;
+        }
+    }
+
+    LLVMContextSetDiagnosticHandler(LLVMGetGlobalContext(), old_handler, old_context);
+
+    *out = (TranslationUnit) {
+        .module = mod,
+    };
+
+    return false;
+}
+
+// Currently bundles all objects
+bool tu_emit_binary(CliState *S, TranslationUnit *tus, size_t n_tus) {
+    TranslationUnit merged;
+    if (tu_merge(S, &merged, tus, n_tus)) {
+        return true;
+    }
+
+    merged.file = S->out_file;
+
+    if (tu_emit_objects(S, &merged, 1, OBJECT_FILE)) {
+        tu_free(&merged);
         return true;
     }
 
@@ -228,5 +350,11 @@ void tu_free(TranslationUnit *this) {
         str_free(&this->compile_result.error.description);
     }
 
-    LLVMDisposeModule(this->compile_result.module);
+    if (this->module) {
+        LLVMDisposeModule(this->module);
+    }
+
+    if (this->compile_result.module) {
+        LLVMDisposeModule(this->compile_result.module);
+    }
 }

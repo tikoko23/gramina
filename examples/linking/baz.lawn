@@ -1,0 +1,17 @@
+fn foo() -> int;
+fn bar() -> int;
+fn putchar(int char) -> int;
+fn exit(int status);
+
+fn print_num(int n) {
+    putchar('0' + n / 10);
+    putchar('0' + n % 10);
+    putchar('\n');
+}
+
+#extern("_start")
+fn baz() {
+    print_num(foo());
+    print_num(bar());
+    exit(0);
+}

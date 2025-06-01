@@ -14,6 +14,7 @@ enum {
     OUT_FILE_ARG,
     LOG_LEVEL_ARG,
     AST_DUMP_ARG,
+    IR_DUMP_ARG,
     STAGE_ARG,
     LINK_LIB_ARG,
 };
@@ -62,6 +63,10 @@ static bool determine_max_stage(CliState *S, Arguments *args) {
     }
 
     if (false) {
+    } else if (strcmp(stage_arg->param, "a") == 0
+            || strcmp(stage_arg->param, "asm") == 0
+            || strcmp(stage_arg->param, "assembly") == 0) {
+        S->max_stage = COMPILATION_STAGE_ASM;
     } else if (strcmp(stage_arg->param, "o") == 0
             || strcmp(stage_arg->param, "obj") == 0
             || strcmp(stage_arg->param, "object") == 0) {
@@ -97,17 +102,22 @@ static bool populate_fields(CliState *S, Arguments *args) {
 
     ArgumentInfo *out_file_arg = &args->named.items[OUT_FILE_ARG];
     ArgumentInfo *ast_dump_arg = &args->named.items[AST_DUMP_ARG];
+    ArgumentInfo *ir_dump_arg = &args->named.items[IR_DUMP_ARG];
 
     S->sources = args->positional;
     args->positional = mk_array(_GraminaArgString); // Move the array
 
     S->out_file = out_file_arg->found
                 ? out_file_arg->param
-                : "out.ll";
+                : "a.out";
 
     S->ast_dump_file = ast_dump_arg->found
                      ? ast_dump_arg->param
                      : NULL;
+
+    S->ir_dump_file = ir_dump_arg->found
+                    ? ir_dump_arg->param
+                    : NULL;
 
     if (determine_log_level(args)) {
         return true;
@@ -156,6 +166,12 @@ bool cli_handle_args(CliState *S, int argc, char **argv) {
         },
         [AST_DUMP_ARG] = {
             .name = "ast-dump",
+            .type = GRAMINA_ARG_LONG,
+            .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
+        },
+        [IR_DUMP_ARG] = {
+            .name = "ir-dump",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
             .override_behavior = GRAMINA_OVERRIDE_FORBID,

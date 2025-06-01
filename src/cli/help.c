@@ -15,6 +15,7 @@ void cli_show_general_help() {
         "\t-v, --verbose                    Enable verbose logging\n"
         "\t--log-level [level]              Set the log level (`--help log-level` for more information)\n"
         "\t                                 Level may be 'all', 'info', 'warn', 'error', 'silent' or 'none'\n"
+        "\t--ir-dump [file]                 Print the created LLVM IR into the given file\n"
         "\t--ast-dump [file]                Print the created AST into the given file\n"
         "\t-l [libname]                     Declare a library to be linked (WIP)\n"
         "\t-s, --stage [stage]              Set the stage at which the compilation will stop\n"
@@ -51,6 +52,7 @@ void cli_show_specific_help(const char *topic) {
     } else if (strcmp(topic, "stage") == 0) {
         const char *stage_help =
             "List of available stages:\n"
+            "\ta, asm, assembly         (assembly file)\n"
             "\to, obj, object           (object file)\n"
             "\tb, bin, binary           (library or executable)\n"
             "";
