@@ -1,6 +1,7 @@
+#define GRAMINA_NO_NAMESPACE
+
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
-#define GRAMINA_NO_NAMESPACE
 
 #include <errno.h>
 #include <string.h>
@@ -9,6 +10,7 @@
 #include <llvm-c/Error.h>
 #include <llvm-c/Linker.h>
 
+#include "cli/etc.h"
 #include "cli/highlight.h"
 #include "cli/state.h"
 #include "cli/tu.h"
@@ -45,7 +47,7 @@ static char *replace_extension(const char *filename, const char *extension) {
                            ? dot_loc - filename
                            : strlen(filename);
 
-    char *buf = malloc(extension_start + strlen(extension) + 1);
+    char *buf = gramina_malloc(extension_start + strlen(extension) + 1);
 
     memcpy(buf, filename, extension_start);
     memcpy(buf + extension_start, extension, strlen(extension) + 1);
@@ -282,7 +284,7 @@ bool tu_emit_objects(CliState *S, TranslationUnit *tus, size_t n_tus, ObjectFile
             return true;
         }
 
-        free(replaced);
+        gramina_free(replaced);
     }
 
     return false;
@@ -335,13 +337,32 @@ bool tu_emit_binary(CliState *S, TranslationUnit *tus, size_t n_tus) {
         return true;
     }
 
-    merged.file = S->out_file;
+    char *merged_file = replace_extension(S->out_file, ".temp.o");
+    merged.file = merged_file;
 
     if (tu_emit_objects(S, &merged, 1, OBJECT_FILE)) {
         tu_free(&merged);
+        gramina_free(merged_file);
         return true;
     }
 
+    StringView filename_view = mk_sv_c(merged_file);
+    if (cli_link_objects(S, &filename_view, 1)) {
+        if (!S->keep_temps) {
+            remove(merged_file);
+        }
+
+        tu_free(&merged);
+        gramina_free(merged_file);
+        return true;
+    }
+
+    if (!S->keep_temps) {
+        remove(merged_file);
+    }
+
+    tu_free(&merged);
+    gramina_free(merged_file);
     return false;
 }
 

@@ -19,6 +19,8 @@ void cli_show_general_help() {
         "\t--ast-dump [file]                Print the created AST into the given file\n"
         "\t-l [libname]                     Declare a library to be linked (WIP)\n"
         "\t-s, --stage [stage]              Set the stage at which the compilation will stop\n"
+        "\t--linker [prog]                  Use the given program as the linker\n"
+        "\t--keep-temps                     Do not remove temporary object files created after use\n"
         "";
 
     printf("%s", help);

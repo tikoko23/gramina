@@ -17,6 +17,8 @@ enum {
     IR_DUMP_ARG,
     STAGE_ARG,
     LINK_LIB_ARG,
+    LINKER_PROG_ARG,
+    KEEP_TEMPS_ARG,
 };
 
 static bool determine_log_level(Arguments *args) {
@@ -103,6 +105,8 @@ static bool populate_fields(CliState *S, Arguments *args) {
     ArgumentInfo *out_file_arg = &args->named.items[OUT_FILE_ARG];
     ArgumentInfo *ast_dump_arg = &args->named.items[AST_DUMP_ARG];
     ArgumentInfo *ir_dump_arg = &args->named.items[IR_DUMP_ARG];
+    ArgumentInfo *linker_prog_arg = &args->named.items[LINKER_PROG_ARG];
+    ArgumentInfo *keep_temps_arg = &args->named.items[KEEP_TEMPS_ARG];
 
     S->sources = args->positional;
     args->positional = mk_array(_GraminaArgString); // Move the array
@@ -118,6 +122,12 @@ static bool populate_fields(CliState *S, Arguments *args) {
     S->ir_dump_file = ir_dump_arg->found
                     ? ir_dump_arg->param
                     : NULL;
+
+    S->linker_prog = linker_prog_arg->found
+                   ? linker_prog_arg->param
+                   : "ld"; // Only works with GNU toolchain
+
+    S->keep_temps = keep_temps_arg->found;
 
     if (determine_log_level(args)) {
         return true;
@@ -182,7 +192,19 @@ bool cli_handle_args(CliState *S, int argc, char **argv) {
             .param_needs = GRAMINA_PARAM_MULTI,
             .override_behavior = GRAMINA_OVERRIDE_OK,
             .multi_params = &S->link_libs,
-        }
+        },
+        [LINKER_PROG_ARG] = {
+            .name = "linker",
+            .type = GRAMINA_ARG_LONG,
+            .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_WARN,
+        },
+        [KEEP_TEMPS_ARG] = {
+            .name = "keep-temps",
+            .type = GRAMINA_ARG_LONG,
+            .param_needs = GRAMINA_PARAM_NONE,
+            .override_behavior = GRAMINA_OVERRIDE_OK,
+        },
     };
 
     Arguments args = {

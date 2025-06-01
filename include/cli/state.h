@@ -14,6 +14,9 @@ typedef struct {
     const char *out_file;
     const char *ast_dump_file;
     const char *ir_dump_file;
+    const char *linker_prog;
+
+    bool keep_temps;
 
     enum {
         COMPILATION_STAGE_ASM,
