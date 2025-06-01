@@ -30,9 +30,9 @@ struct gramina_argument_info {
     } param_needs;
 
     enum {
-        GRAMINA_OVERRIDE_OK,
-        GRAMINA_OVERRIDE_WARN,
         GRAMINA_OVERRIDE_FORBID,
+        GRAMINA_OVERRIDE_WARN,
+        GRAMINA_OVERRIDE_OK,
     } override_behavior;
 
     char flag;

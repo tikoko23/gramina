@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "common/arg.h"
+#include "common/log.h"
 
 GRAMINA_IMPLEMENT_ARRAY(_GraminaArgInfo)
 GRAMINA_IMPLEMENT_ARRAY(_GraminaArgString)
@@ -77,6 +78,27 @@ static bool populate_arg(int argc, char **argv, size_t *i, ArgumentInfo *info, A
     return false;
 }
 
+static bool validate_arg(Arguments *S, ArgumentInfo *this) {
+    if (!this->found) {
+        return false;
+    }
+
+    StringView name = this->type & GRAMINA_ARG_LONG
+                    ? mk_sv_c(this->name)
+                    : mk_sv_buf((uint8_t *)&this->flag, 1);
+
+    switch (this->override_behavior) {
+    case GRAMINA_OVERRIDE_OK:
+        return false;
+    case GRAMINA_OVERRIDE_WARN:
+        wlog_fmt("Repeated argument: {sv}\n", &name);
+        return false;
+    case GRAMINA_OVERRIDE_FORBID:
+        S->error = str_cfmt("Repetition forbidden for argument: {sv}", &name);
+        return true;
+    }
+}
+
 bool gramina_args_parse(Arguments *this, int argc, char **argv) {
     // I don't know if this can happen but it's here anyway
     if (argc <= 0) {
@@ -102,6 +124,10 @@ bool gramina_args_parse(Arguments *this, int argc, char **argv) {
                 return true;
             }
 
+            if (validate_arg(this, info)) {
+                return true;
+            }
+
             info->found = true;
 
             if (populate_arg(argc, argv, &i, info, this)) {
@@ -123,6 +149,10 @@ bool gramina_args_parse(Arguments *this, int argc, char **argv) {
                 ArgumentInfo *info = find_flag(this, flag);
                 if (!info) {
                     this->error = str_cfmt("Unknown flag '{c}'", flag);
+                    return true;
+                }
+
+                if (validate_arg(this, info)) {
                     return true;
                 }
 

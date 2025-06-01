@@ -122,32 +122,38 @@ int main(int argc, char **argv) {
             .name = "help",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_OPTIONAL,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [VERBOSE_ARG] = {
             .name = "verbose",
             .flag = 'v',
             .type = GRAMINA_ARG_LONG | GRAMINA_ARG_FLAG,
             .param_needs = GRAMINA_PARAM_NONE,
+            .override_behavior = GRAMINA_OVERRIDE_OK,
         },
         [OUT_FILE_ARG] = {
             .flag = 'o',
             .type = GRAMINA_ARG_FLAG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [LOG_LEVEL_ARG] = {
             .name = "log-level",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [AST_DUMP_ARG] = {
             .name = "ast-dump",
             .type = GRAMINA_ARG_LONG,
             .param_needs = GRAMINA_PARAM_REQUIRED,
+            .override_behavior = GRAMINA_OVERRIDE_FORBID,
         },
         [LINK_LIB_ARG] = {
             .flag = 'l',
             .type = GRAMINA_ARG_FLAG,
             .param_needs = GRAMINA_PARAM_MULTI,
+            .override_behavior = GRAMINA_OVERRIDE_OK,
             .multi_params = &linked_libs,
         }
     };
