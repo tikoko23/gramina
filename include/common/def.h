@@ -3,10 +3,12 @@
 
 #include <stdbool.h>
 
-#ifdef __unix__
+
+#if defined(unix) || defined(__unix__) || defined(__unix)
 #  include <unistd.h>
 #  include <signal.h>
 #  define gramina_trigger_debugger() raise(SIGTRAP)
+#  define GRAMINA_UNIX_BUILD
 #endif
 #ifdef _WIN32
 #  include <windows.h>
