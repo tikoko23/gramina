@@ -37,7 +37,7 @@ add_library(gracompile STATIC ${COMPILER_SOURCES})
 # TODO: Switch to a more compatible approach
 set(LLVM_LIBS "LLVM-19")
 
-add_executable(gramina src/test.c ${CLI_SOURCES})
+add_executable(gramina ${CLI_SOURCES})
 
 # TODO: Find a more compatible approach
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
