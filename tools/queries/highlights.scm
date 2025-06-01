@@ -5,8 +5,12 @@
 (number) @number
 (bool) @boolean
 (char) @character
+(string) @string
 
-[(char_escape_seq)] @string.escape
+[
+  (char_escape_seq)
+  (string_escape_seq)
+] @string.escape
 
 [
   (evaluative_op)
@@ -32,7 +36,7 @@
 ] @operator
 
 (access_exp
-  (factor) @function 
+  (factor) @function
   (call_exp_list))
 
 (access_exp
@@ -62,13 +66,14 @@
 (param) @variable.parameter
 (member) @variable.member
 
+(attribs) @attribute.builtin
+
 (struct_def
   (identifier) @type)
 
-(function_attribs) @attribute.builtin
 (function_def
   (identifier) @function)
 
-["$"] @punctuation.special 
+["$"] @punctuation.special
 ["(" ")" "{" "}" "[" "]"] @punctuation.bracket
 [";" "," "." ":" "::" ".."] @punctuation.delimiter

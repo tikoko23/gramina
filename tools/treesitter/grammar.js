@@ -122,8 +122,15 @@ module.exports = grammar({
       ), ";")
     ),
 
+    attribs: $ => repeat1(
+      seq("#", $.identifier, optional(seq(
+        "(", $.string, ")"
+      )))
+    ),
+
     struct_field: $ => seq($.typename, $.member, ";"),
     struct_def: $ => seq(
+      optional($.attribs),
       keyword("struct"),
       $.identifier,
       "{",
@@ -131,12 +138,8 @@ module.exports = grammar({
       "}"
     ),
 
-    function_attribs: $ => repeat1(
-      seq("#", $.identifier)
-    ),
-
     function_def: $ => seq(
-      optional($.function_attribs),
+      optional($.attribs),
       keyword("fn"),
       $.identifier,
       "(",
@@ -187,6 +190,7 @@ module.exports = grammar({
     ),
 
     char_escape_seq: _ => escape("'"),
+    string_escape_seq: _ => escape("\""),
 
     char: $ => seq(
       "'",
@@ -195,6 +199,15 @@ module.exports = grammar({
         /[^\\']/
       )),
       "'"
+    ),
+
+    string: $ => seq(
+      "\"",
+      repeat(choice(
+        $.string_escape_seq,
+        /[^\\"]/
+      )),
+      "\""
     ),
 
     bool: _ => choice(
@@ -207,6 +220,7 @@ module.exports = grammar({
       $.number,
       $.bool,
       $.char,
+      $.string,
     ),
 
     expression: $ => $.assignment_exp,
