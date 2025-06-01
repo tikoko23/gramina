@@ -9,7 +9,7 @@
 
 void cli_show_general_help() {
     const char *help =
-        "Usage: ./test [options] files...\n"
+        "Usage: gramina [options] files...\n"
         "Options:\n"
         "\t--help [topic?]                  Show this message or help on a specific topic (`--help help` for a list of topics)\n"
         "\t-v, --verbose                    Enable verbose logging\n"

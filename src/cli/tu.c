@@ -266,7 +266,12 @@ bool tu_emit_objects(CliState *S, TranslationUnit *tus, size_t n_tus, ObjectFile
 
         LLVMModuleRef mod = T->module;
 
-        char *replaced = replace_extension(T->file, ".o");
+        char *replaced = replace_extension(
+            T->file,
+            type == OBJECT_FILE
+                ? ".o"
+                : ".S"
+        );
         char *err;
 
         if (LLVMTargetMachineEmitToFile(S->machine, mod, replaced, (LLVMCodeGenFileType)type, &err)) {
