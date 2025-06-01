@@ -13,6 +13,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 file(GLOB_RECURSE PARSER_SOURCES src/parser/*.c)
 file(GLOB_RECURSE COMMON_SOURCES src/common/*.c)
 file(GLOB_RECURSE COMPILER_SOURCES src/compiler/*.c)
+file(GLOB_RECURSE CLI_SOURCES src/cli/*.c)
 
 add_custom_target(GenerateHeaders ALL
     COMMAND ${CMAKE_SOURCE_DIR}/scripts/gen_extra_includes.py
@@ -36,15 +37,15 @@ add_library(gracompile STATIC ${COMPILER_SOURCES})
 # TODO: Switch to a more compatible approach
 set(LLVM_LIBS "LLVM-19")
 
-add_executable(test src/test.c)
+add_executable(gramina ${CLI_SOURCES})
 
 # TODO: Find a more compatible approach
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_link_libraries(test asan)
+    target_link_libraries(gramina asan)
     target_compile_options(graparse PRIVATE -fsanitize=address)
     target_compile_options(gracommon PRIVATE -fsanitize=address)
     target_compile_options(gracompile PRIVATE -fsanitize=address)
-    target_compile_options(test PRIVATE -fsanitize=address)
+    target_compile_options(gramina PRIVATE -fsanitize=address)
 endif ()
 
-target_link_libraries(test m graparse gracompile gracommon ${LLVM_LIBS})
+target_link_libraries(gramina m graparse gracompile gracommon ${LLVM_LIBS})
