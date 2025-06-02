@@ -13,8 +13,8 @@ LLVMTargetMachineRef cli_get_machine() {
     char *triple = LLVMGetDefaultTargetTriple();
     LLVMTargetRef target;
     if (LLVMGetTargetFromTriple(triple, &target, &err)) {
-        elog_fmt("LLVM target triple: {cstr}\n", err);
-        LLVMDisposeErrorMessage(err);
+        elog_fmt("LLVM target triple '{cstr}': {cstr}\n", triple, err);
+        LLVMDisposeMessage(err);
         LLVMDisposeMessage(triple);
         return NULL;
     }

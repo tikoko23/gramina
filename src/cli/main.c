@@ -1,4 +1,3 @@
-#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include "cli/etc.h"
@@ -8,6 +7,13 @@
 #include "common/arg.h"
 #include "common/init.h"
 #include "common/log.h"
+
+#ifdef GRAMINA_UNIX_BUILD
+#  undef GRAMINA_UNIX_BUILD
+#  define GRAMINA_UNIX_BUILD 1
+#else
+#  define GRAMINA_UNIX_BUILD 0
+#endif
 
 int main(int argc, char **argv) {
     init();
@@ -19,6 +25,15 @@ int main(int argc, char **argv) {
     };
 
     if (cli_handle_args(&S, argc, argv)) {
+        cli_state_free(&S);
+        return 1;
+    }
+
+    if (!GRAMINA_UNIX_BUILD && S.max_stage == COMPILATION_STAGE_BIN) {
+        log_fmt(GRAMINA_LOG_LEVEL_NONE, "Emitting native binaries isn't supported on non-POSIX systems\n"
+                                        "!! Manually link object files instead\n"
+                                        "!! To generate object files, use `gramina --stage object`\n");
+
         cli_state_free(&S);
         return 1;
     }
