@@ -46,10 +46,12 @@ void __gramina_log_cleanup(); /* ignore */
 
 #endif
 
-#ifdef GRAMINA_NO_NAMESPACE
+#if defined(GRAMINA_NO_NAMESPACE) && !defined(GRAMINA_LOG_CALLBACK_DEFINED)
+#  define GRAMINA_LOG_CALLBACK_DEFINED
    typedef gramina_log_callback LogCallback;
 #endif
-#ifdef GRAMINA_WANT_TAGLESS
+#if defined(GRAMINA_WANT_TAGLESS) && !defined(GRAMINA_GLOG_CALLBACK_DEFINED)
+#  define GRAMINA_GLOG_CALLBACK_DEFINED
    typedef gramina_log_callback GraminaLogCallback;
 #endif
 
