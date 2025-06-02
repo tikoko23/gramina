@@ -8,3 +8,4 @@ local/**
 **/__pycache__/*
 examples/*.ll
 examples/*.out
+tests/local/**
