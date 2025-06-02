@@ -11,6 +11,8 @@ void gramina_declaration_statement(struct gramina_compiler_state *S, LLVMValueRe
 
 void gramina_return_statement(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
+void gramina_if_statement(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
+
 void gramina_while_statement(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
 void gramina_for_statement(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);

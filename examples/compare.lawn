@@ -1,0 +1,14 @@
+fn exit(int status);
+
+#extern("_start")
+fn entry() {
+    int status = 0;
+
+    if status > 23 {
+        status = 23;
+    } else {
+        status = 5;
+    }
+
+    exit(status);
+}

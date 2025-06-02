@@ -219,7 +219,7 @@ Value comparison_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
         S->error.pos = this->pos;
     }
 
-    return invalid_value();
+    return ret;
 }
 
 Value unary_arithmetic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
