@@ -17,6 +17,7 @@ The CMake configuration defines the following targets:
 - `gracommon` (static library)
 - `graparse` (static library)
 - `gracompile` (static library)
+- `gratestutils` (static library)
 - `gramina` (command line utility)
 
 ```bash
