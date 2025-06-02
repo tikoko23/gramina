@@ -51,6 +51,8 @@ int main(int argc, char **argv) {
             tu_free(&T);
             pipeline_free(&P);
             cli_state_free(&S);
+
+            return 1;
         }
 
         tus[i] = T;
