@@ -90,8 +90,10 @@ int main(int argc, char **argv) {
         err = tu_emit_binary(&S, tus, length);
     }
 
+    int status = 0;
     if (err) {
         elog_fmt("Failed to emit {cstr} file\n", emit_type);
+        status = 1; 
     }
 
     for (size_t i = 0; i < length; ++i) {
@@ -101,5 +103,5 @@ int main(int argc, char **argv) {
     pipeline_free(&P);
     cli_state_free(&S);
 
-    return 0;
+    return status;
 }
