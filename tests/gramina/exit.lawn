@@ -1,0 +1,6 @@
+fn exit(int status);
+
+#extern("_start")
+fn entry() {
+    exit(0);
+}
