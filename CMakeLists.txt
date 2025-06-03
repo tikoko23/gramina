@@ -59,5 +59,5 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     target_compile_options(unit_tests PRIVATE -fsanitize=address)
 endif ()
 
-target_link_libraries(gramina m graparse gracompile gracommon ${LLVM_LIBS})
-target_link_libraries(unit_tests m gratestutils graparse gracompile gracommon ${LLVM_LIBS})
+target_link_libraries(gramina m gracompile graparse gracommon ${LLVM_LIBS})
+target_link_libraries(unit_tests m gratestutils gracompile graparse gracommon ${LLVM_LIBS})
