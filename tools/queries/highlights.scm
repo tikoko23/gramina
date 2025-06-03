@@ -59,6 +59,7 @@
 
 "return" @keyword.return
 
+"const" @keyword.type
 "struct" @keyword.type
 "fn" @keyword.function
 

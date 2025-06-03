@@ -160,14 +160,18 @@ module.exports = grammar({
     ),
 
     typename: $ => seq(
+      optional(keyword("const")),
       choice(
         $.identifier,
         "$"
       ),
-      repeat(choice(
-        "&",
-        "[]",
-        seq("[", /[0-9]+/, "]")
+      repeat(seq(
+        optional(keyword("const")),
+        choice(
+          "&",
+          "[]",
+          seq("[", /[0-9]+/, "]")
+        )
       )),
     ),
 
