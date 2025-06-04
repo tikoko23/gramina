@@ -22,6 +22,7 @@ static int run_tests(const Test *tests, size_t n) {
         switch (setjmp(tester_ret)) {
         case 0:
             T->tester();
+            wlog_fmt("Test '{cstr}' did not terminate properly, missing `test_ok` or `test_fail`?\n", T->name);
             break;
         case TEST_FAIL:
             ++n_failed;
@@ -88,5 +89,8 @@ int main(int argc, char **argv) {
         MAKE_TEST(Constness),
     };
 
-    return run_tests(tests, (sizeof tests) / (sizeof tests[0]));
+    size_t n_tests = (sizeof tests) / (sizeof tests[0]);
+    ilog_fmt("Found {sz} tests\n", n_tests);
+
+    return run_tests(tests, n_tests);
 }
