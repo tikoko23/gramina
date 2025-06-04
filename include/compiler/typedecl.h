@@ -49,6 +49,7 @@ struct gramina_type_requirements {
 struct gramina_type {
     LLVMTypeRef llvm;
     enum gramina_type_kind kind;
+    bool is_const;
     // bool lvalue;
     union {
         /* PRIMITIVE */ enum gramina_primitive primitive;

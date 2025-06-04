@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
 
     Test tests[] = {
         MAKE_TEST(Hello),
-        MAKE_TEST(Exit)
+        MAKE_TEST(Exit),
+        MAKE_TEST(TypeToString),
     };
 
     return run_tests(tests, (sizeof tests) / (sizeof tests[0]));

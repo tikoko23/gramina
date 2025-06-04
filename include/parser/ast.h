@@ -120,6 +120,10 @@ enum gramina_ast_node_type {
     GRAMINA_AST_OP_ASSIGN_CAT,
 };
 
+enum gramina_ast_node_flag {
+    GRAMINA_AST_CONST_TYPE = GRAMINA_N_TH(0),
+};
+
 union gramina_ast_node_value {
     float f32;
     double f64;
@@ -143,6 +147,8 @@ union gramina_ast_node_value {
 };
 
 struct gramina_ast_node {
+    uint64_t flags;
+
     struct gramina_token_position pos;
 
     enum gramina_ast_node_type type;
