@@ -10,10 +10,14 @@
 
 GRAMINA_IMPLEMENT_ARRAY(_GraminaReflection);
 
-static int llvm_init(CompilerState *S) {
+int gramina_compiler_init() {
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
 
+    return 0;
+}
+
+static int init_state(CompilerState *S) {
     const char *module_name = "base"; // WIP
     S->llvm_module = LLVMModuleCreateWithName(module_name);
     S->llvm_builder = LLVMCreateBuilder();
@@ -25,7 +29,7 @@ static int llvm_init(CompilerState *S) {
     return 0;
 }
 
-static int llvm_deinit(CompilerState *S) {
+static int deinit_state(CompilerState *S) {
     LLVMDisposeBuilder(S->llvm_builder);
 
     return 0;
@@ -38,7 +42,7 @@ CompileResult gramina_compile(AstNode *root) {
         .reflection = mk_array(_GraminaReflection),
     };
 
-    S.status = llvm_init(&S);
+    S.status = init_state(&S);
     if (S.status) {
         return (CompileResult) {
             .status = GRAMINA_COMPILE_ERR_LLVM,
@@ -75,7 +79,7 @@ CompileResult gramina_compile(AstNode *root) {
         array_free(GraminaScope, &S.scopes);
         array_free(_GraminaReflection, &S.reflection);
 
-        llvm_deinit(&S);
+        deinit_state(&S);
         LLVMDisposeModule(S.llvm_module);
 
         return (CompileResult) {
@@ -89,7 +93,7 @@ CompileResult gramina_compile(AstNode *root) {
     array_free(GraminaScope, &S.scopes);
     array_free(_GraminaReflection, &S.reflection);
 
-    S.status = llvm_deinit(&S);
+    S.status = deinit_state(&S);
     if (S.status) {
         LLVMDisposeModule(S.llvm_module);
         return (CompileResult) {

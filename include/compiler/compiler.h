@@ -33,6 +33,8 @@ struct gramina_compile_result {
     LLVMModuleRef module;
 };
 
+int gramina_compiler_init();
+
 struct gramina_string_view gramina_compile_error_code_to_str(enum gramina_compile_error_code e);
 
 void gramina_free_compile_error(struct gramina_compile_error *this);

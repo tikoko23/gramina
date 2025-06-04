@@ -38,6 +38,11 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (compiler_init()) {
+        elog_fmt("Failed to initialise compiler\n");
+        return 1;
+    }
+
     Pipeline P = pipeline_default(&S);
 
     TranslationUnit tus[S.sources.length];
