@@ -14,6 +14,7 @@ struct gramina_type gramina_type_dup(const struct gramina_type *this);
 bool gramina_type_is_same(const struct gramina_type *a, const struct gramina_type *b);
 
 bool gramina_type_can_convert(const struct gramina_compiler_state *S, const struct gramina_type *from, const struct gramina_type *to);
+bool gramina_init_respects_constness(const struct gramina_compiler_state *S, const struct gramina_type *from, const struct gramina_type *to);
 
 struct gramina_type gramina_decltype(const struct gramina_compiler_state *S, const struct gramina_ast_node *exp);
 

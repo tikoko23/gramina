@@ -1,7 +1,7 @@
-#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
 
 #include "common/str.h"
 #include "common/hashmap.h"
@@ -70,7 +70,7 @@ Type gramina_mk_pointer_type(const Type *pointed) {
     return typ;
 }
 
-Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
+static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
     if (this == NULL) {
         return (Type) {
             .kind = GRAMINA_TYPE_VOID,
@@ -210,8 +210,17 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
         while ((cur = cur->right)) {
             StringView field_name = str_as_view(&cur->left->value.identifier);
             StructField *field = gramina_malloc(sizeof *field);
-            field->type = type_from_ast_node(S, cur->left->left);
+
+            AstNode *type_node = cur->left->left;
+
+            // This is kind of a hack but who cares?
+            uint64_t old_flags = type_node->flags;
+            type_node->flags |= GRAMINA_AST_CONST_TYPE;
+
+            field->type = type_from_ast_node(S, type_node);
             field->index = index;
+
+            type_node->flags = old_flags;
 
             llvm_fields[index++] = field->type.llvm;
 
@@ -260,38 +269,78 @@ Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
     };
 }
 
+Type gramina_type_from_ast_node(CompilerState *S, const AstNode *this) {
+    Type ret = _type_from_ast_node(S, this);
+
+    if (this && this->flags & GRAMINA_AST_CONST_TYPE) {
+        ret.is_const = true;
+    }
+
+    return ret;
+}
+
 String gramina_type_to_str(const Type *this) {
     switch (this->kind) {
-    case GRAMINA_TYPE_VOID:
-        return mk_str_c("void");
-    case GRAMINA_TYPE_PRIMITIVE:
+    case GRAMINA_TYPE_VOID: {
+        String base = this->is_const
+                    ? mk_str_c("const ")
+                    : mk_str();
+
+        str_cat_cstr(&base, "void");
+
+        return base;
+    }
+    case GRAMINA_TYPE_PRIMITIVE: {
+        StringView s;
         switch (this->primitive) {
         case GRAMINA_PRIMITIVE_BOOL:
-            return mk_str_c("bool");
+            s = mk_sv_c("bool");
+            break;
         case GRAMINA_PRIMITIVE_BYTE:
-            return mk_str_c("byte");
+            s = mk_sv_c("byte");
+            break;
         case GRAMINA_PRIMITIVE_UBYTE:
-            return mk_str_c("ubyte");
+            s = mk_sv_c("ubyte");
+            break;
         case GRAMINA_PRIMITIVE_SHORT:
-            return mk_str_c("short");
+            s = mk_sv_c("short");
+            break;
         case GRAMINA_PRIMITIVE_USHORT:
-            return mk_str_c("ushort");
+            s = mk_sv_c("ushort");
+            break;
         case GRAMINA_PRIMITIVE_INT:
-            return mk_str_c("int");
+            s = mk_sv_c("int");
+            break;
         case GRAMINA_PRIMITIVE_UINT:
-            return mk_str_c("uint");
+            s = mk_sv_c("uint");
+            break;
         case GRAMINA_PRIMITIVE_LONG:
-            return mk_str_c("long");
+            s = mk_sv_c("long");
+            break;
         case GRAMINA_PRIMITIVE_ULONG:
-            return mk_str_c("ulong");
+            s = mk_sv_c("ulong");
+            break;
         case GRAMINA_PRIMITIVE_FLOAT:
-            return mk_str_c("float");
+            s = mk_sv_c("float");
+            break;
         case GRAMINA_PRIMITIVE_DOUBLE:
-            return mk_str_c("double");
+            s = mk_sv_c("double");
+            break;
         }
-        break;
+
+        String base = this->is_const
+                    ? mk_str_c("const ")
+                    : mk_str();
+
+        str_cat_sv(&base, &s);
+        return base;
+    }
     case GRAMINA_TYPE_POINTER: {
         String pointed = type_to_str(this->pointer_type);
+        if (this->is_const) {
+            str_cat_cstr(&pointed, " const");
+        }
+
         str_append(&pointed, '&');
 
         return pointed;
@@ -300,6 +349,10 @@ String gramina_type_to_str(const Type *this) {
         return str_dup(&this->struct_name);
     case GRAMINA_TYPE_SLICE: {
         String subtype = type_to_str(this->slice_type);
+        if (this->is_const) {
+            str_cat_cstr(&subtype, " const");
+        }
+
         str_cat_cstr(&subtype, "[]");
 
         return subtype;
@@ -416,6 +469,28 @@ bool gramina_type_can_convert(const CompilerState *S, const Type *from, const Ty
     return false;
 }
 
+static bool respects_const(bool is_const, bool wants_const) {
+    return is_const
+         ? wants_const
+         : true;
+}
+
+bool gramina_init_respects_constness(const CompilerState *S, const Type *from, const Type *to) {
+    if (from->kind != to->kind) {
+        return false;
+    }
+
+    switch (from->kind) {
+    case GRAMINA_TYPE_POINTER:
+        return respects_const(from->pointer_type->is_const, to->pointer_type->is_const)
+            && init_respects_constness(S, from->pointer_type, to->pointer_type);
+    default:
+        break;
+    }
+
+    return true;
+}
+
 Type gramina_decltype(const CompilerState *S, const AstNode *exp) {
     switch (exp->type) {
     case GRAMINA_AST_IDENTIFIER: {
@@ -496,6 +571,7 @@ Type gramina_type_dup(const Type *this) {
             .return_type = NULL,
             .param_types = mk_array(_GraminaType),
             .llvm = this->llvm,
+            .is_const = this->is_const,
         };
 
         if (this->return_type) {
@@ -518,6 +594,7 @@ Type gramina_type_dup(const Type *this) {
         Type typ = {
             .kind = GRAMINA_TYPE_POINTER,
             .llvm = this->llvm,
+            .is_const = this->is_const,
         };
 
         typ.pointer_type = gramina_malloc(sizeof *typ.pointer_type);
@@ -529,6 +606,7 @@ Type gramina_type_dup(const Type *this) {
         Type typ = {
             .kind = GRAMINA_TYPE_SLICE,
             .llvm = this->llvm,
+            .is_const = this->is_const,
         };
 
         typ.slice_type = gramina_malloc(sizeof *typ.slice_type);
@@ -541,6 +619,7 @@ Type gramina_type_dup(const Type *this) {
             .kind = GRAMINA_TYPE_STRUCT,
             .struct_name = str_dup(&this->struct_name),
             .llvm = this->llvm,
+            .is_const = this->is_const,
         };
 
         typ.fields = mk_hashmap(this->fields.n_buckets);

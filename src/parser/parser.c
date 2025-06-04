@@ -1016,10 +1016,20 @@ static AstNode *identifier(ParserState *S) {
 }
 
 static AstNode *typename(ParserState *S) {
+    bool const_next = false;
+
+    if (CURRENT(S).type == GRAMINA_TOK_KW_CONST) {
+        const_next = true;
+        CONSUME(S);
+    }
+
     if (CURRENT(S).type == GRAMINA_TOK_DOLLAR) {
         AstNode *this = mk_ast_node(NULL);
         this->type = GRAMINA_AST_REFLECT;
         this->pos = CURRENT(S).pos;
+        if (const_next) {
+            this->flags |= GRAMINA_AST_CONST_TYPE;
+        }
 
         CONSUME(S);
         return this;
@@ -1031,13 +1041,28 @@ static AstNode *typename(ParserState *S) {
         return NULL;
     }
 
+    if (const_next) {
+        cur->flags |= GRAMINA_AST_CONST_TYPE;
+    }
+
+    const_next = false;
+
     bool loop = true;
     while (loop) {
         switch (CURRENT(S).type) {
+        case GRAMINA_TOK_KW_CONST:
+            const_next = true;
+            CONSUME(S);
+            break;;
         case GRAMINA_TOK_AMPERSAND:
             cur = mk_ast_node_lr(NULL, cur, NULL);
             cur->type = GRAMINA_AST_TYPE_POINTER;
             cur->pos = CURRENT(S).pos;
+
+            if (const_next) {
+                cur->flags |= GRAMINA_AST_CONST_TYPE;
+                const_next = false;
+            }
 
             CONSUME(S);
             break;
@@ -1047,6 +1072,11 @@ static AstNode *typename(ParserState *S) {
                 cur = mk_ast_node_lr(NULL, cur, NULL);
                 cur->type = GRAMINA_AST_TYPE_SLICE;
                 cur->pos = N_AFTER(S, -1).pos;
+            
+                if (const_next) {
+                    cur->flags |= GRAMINA_AST_CONST_TYPE;
+                    const_next = false;
+                }
 
                 CONSUME(S);
             } else {
