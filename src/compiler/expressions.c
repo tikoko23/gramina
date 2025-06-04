@@ -301,6 +301,20 @@ bool convert_nodes_to_params(CompilerState *S, Identifier *func, Value *argument
         if (!type_can_convert(S, got, expected)) {
             err_implicit_conv(S, got, expected);
             S->error.pos = param->pos;
+
+            goto fail;
+        }
+
+        if (!init_respects_constness(S, got, expected)) {
+            err_discard_const(S, got, expected);
+            S->error.pos = param->pos;
+
+            fail:
+
+            for (size_t j = 0; j <= i; ++j) {
+                value_free(arguments + i);
+            }
+
             return false;
         }
 

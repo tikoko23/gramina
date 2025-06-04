@@ -15,6 +15,11 @@ Identifier *declaration(CompilerState *S, const StringView *name, const Type *ty
         return NULL;
     }
 
+    if (init && !init_respects_constness(S, &init->type, type)) {
+        err_discard_const(S, &init->type, type);
+        return NULL;
+    }
+
     Identifier *ident = gramina_malloc(sizeof *ident);
     *ident = (Identifier) {
         .kind = GRAMINA_IDENT_KIND_VAR,
@@ -72,6 +77,9 @@ void declaration_statement(CompilerState *S, LLVMValueRef function, AstNode *thi
     }
 
     declaration(S, &name, &ident_type, initialised ? &value : NULL);
+    if (S->has_error) {
+        S->error.pos = this->pos;
+    }
 
     if (initialised) {
         value_free(&value);

@@ -153,11 +153,19 @@ Value assign(CompilerState *S, Value *target, const Value *from) {
         return invalid_value();
     }
 
+    if (target->type.is_const) {
+        err_const_assign(S, &target->type);
+        return invalid_value();
+    }
+
+    if (!init_respects_constness(S, &from->type, &target->type)) {
+        err_discard_const(S, &from->type, &target->type);
+        return invalid_value();
+    }
+
     Value loaded = try_load(S, from);
 
     if (!type_can_convert(S, &loaded.type, &target->type)) {
-        puts("yeah");
-        gramina_trigger_debugger();
         err_implicit_conv(S, &loaded.type, &target->type);
         value_free(&loaded);
         return invalid_value();
