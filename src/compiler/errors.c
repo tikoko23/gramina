@@ -117,3 +117,13 @@ void err_no_attrib_arg(CompilerState *S, const StringView *attrib_name) {
     puts_err(S, str_cfmt("attribute '{sv}' needs an argument"));
     S->status = GRAMINA_COMPILE_ERR_MISSING_ATTRIB_ARG;
 }
+
+void err_const_assign(CompilerState *S, const Type *type) {
+    puts_err(S, str_cfmt("assigning to constant value of type '{so}'", type_to_str(type)));
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+void err_discard_const(CompilerState *S, const Type *from, const Type *to) {
+    puts_err(S, str_cfmt("converting from '{so}' into '{so}' discards const qualifiers", type_to_str(from), type_to_str(to)));
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
