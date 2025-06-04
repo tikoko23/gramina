@@ -13,6 +13,11 @@ struct __gramina_fs_data {
     size_t read_pos;
 };
 
+typedef struct {
+    String string;
+    size_t read_idx;
+} StringStreamData;
+
 Stream gramina_mk_stream() {
     return (Stream) {
         .reader = NULL,
@@ -100,6 +105,52 @@ static bool __gramina_fs_validator(const Stream *this) {
         );
 }
 
+static int strs_reader(Stream *this, uint8_t *buf, size_t bufsize, size_t *read) {
+    StringStreamData *data = this->userdata;
+
+    size_t n_left = data->string.length - data->read_idx;
+    size_t n_read = bufsize > n_left
+                  ? n_left
+                  : bufsize;
+
+    memcpy(buf, data->string.data + data->read_idx, n_read);
+
+    if (read) {
+        *read = n_read;
+    }
+
+    data->read_idx += n_read;
+
+    if (data->read_idx >= data->string.length) {
+        return EOF;
+    }
+
+    return 0;
+}
+
+static int strs_writer(Stream *this, const uint8_t *buf, size_t bufsize) {
+    StringStreamData *data = this->userdata;
+
+    StringView to_be_written = mk_sv_buf(buf, bufsize);
+
+    str_cat_sv(&data->string, &to_be_written);
+
+    return 0;
+}
+
+static int strs_cleaner(Stream *this) {
+    StringStreamData *data = this->userdata;
+    str_free(&data->string);
+    gramina_free(data);
+
+    return 0;
+}
+
+// There isn't really a proper way to check validity
+static bool strs_validator(const Stream *this) {
+    return true;
+}
+
 Stream gramina_mk_stream_file(FILE *f, bool readable, bool writable) {
     Stream this = mk_stream();
 
@@ -165,6 +216,25 @@ Stream gramina_mk_stream_open_c(const char *filename, const char *mode) {
     StringView m = mk_sv_c(mode);
 
     return mk_stream_open(n, m);
+}
+
+Stream gramina_mk_stream_str_own(String str, bool readable, bool writable) {
+    Stream this = mk_stream();
+
+    this.reader = readable ? strs_reader : NULL;
+    this.writer = writable ? strs_writer : NULL;
+    this.cleaner = strs_cleaner;
+    this.validator = strs_validator;
+
+    StringStreamData *userdata = gramina_malloc(sizeof *userdata);
+    *userdata = (StringStreamData) {
+        .string = str,
+        .read_idx = 0,
+    };
+
+    this.userdata = userdata;
+
+    return this;
 }
 
 void gramina_stream_shrink(Stream *this) {

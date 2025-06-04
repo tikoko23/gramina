@@ -35,6 +35,8 @@ struct gramina_stream gramina_mk_stream_file(FILE *f, bool readable, bool writab
 struct gramina_stream gramina_mk_stream_open(struct gramina_string_view filename, struct gramina_string_view mode);
 struct gramina_stream gramina_mk_stream_open_c(const char *filename, const char *mode);
 
+struct gramina_stream gramina_mk_stream_str_own(struct gramina_string str, bool readable, bool writable);
+
 void gramina_stream_shrink(struct gramina_stream *this);
 void gramina_stream_free(struct gramina_stream *this);
 
