@@ -19,6 +19,7 @@ The CMake configuration defines the following targets:
 - `gracompile` (static library)
 - `gratestutils` (static library)
 - `gramina` (command line utility)
+- `unit_tests` (tester, not complete but usable)
 
 ```bash
 cd /path/to/gramina/source
