@@ -1,0 +1,5 @@
+fn Main() {
+    const int a = 23;
+    int& ptr;
+    ptr = &a;
+}

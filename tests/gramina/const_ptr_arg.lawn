@@ -1,0 +1,9 @@
+fn DoSomething(int& ref) {
+    @ref = 23;
+}
+
+fn Main() {
+    const int a = 37;
+
+    DoSomething(&a);
+}

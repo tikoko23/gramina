@@ -16,6 +16,7 @@
 #include <setjmp.h>
 
 #include "common/str.h"
+#include "common/stream.h"
 #include "common/subprocess.h"
 
 enum {
@@ -44,3 +45,7 @@ void set_compilation_output(Subprocess *sp, const char *out);
 void add_libc(Subprocess *sp);
 
 const char *get_compiler();
+
+bool check_compilation_success(Stream *source);
+bool check_compilation_success_sv(const StringView *source);
+bool check_compilation_success_cstr(const char *source);

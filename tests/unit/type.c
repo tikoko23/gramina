@@ -28,3 +28,37 @@ void TEST_TypeToString() {
     test_primitives();
     test_ok();
 }
+
+TEST(Constness) {
+    Stream const_assign = mk_stream_open_c("gramina/const_assign.lawn", "r");
+    Stream const_pointer_arg = mk_stream_open_c("gramina/const_ptr_arg.lawn", "r");
+    Stream const_pointer_bad_init = mk_stream_open_c("gramina/const_ptr_bad_init.lawn", "r");
+    Stream const_pointer_bad_assign = mk_stream_open_c("gramina/const_ptr_bad_assign.lawn", "r");
+
+    Stream *tus[] = {
+        &const_assign,
+        &const_pointer_arg,
+        &const_pointer_bad_init,
+        &const_pointer_bad_assign,
+    };
+
+    bool failed = false;
+
+    for (size_t i = 0; i < (sizeof tus) / (sizeof tus[i]); ++i) {
+        // None of these should compile
+        if (check_compilation_success(tus[i])) {
+            failed = true;
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < (sizeof tus) / (sizeof tus[i]); ++i) {
+        stream_free(tus[i]);
+    }
+
+    if (failed) {
+        test_fail();
+    }
+
+    test_ok();
+}
