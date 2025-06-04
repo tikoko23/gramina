@@ -94,6 +94,8 @@ static bool populate_fields(CliState *S, Arguments *args) {
             cli_show_specific_help(help_arg->param);
         }
 
+        S->wants_help = true;
+
         return false;
     }
 

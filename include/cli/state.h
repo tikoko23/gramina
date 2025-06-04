@@ -17,6 +17,7 @@ typedef struct {
     const char *linker_prog;
 
     bool keep_temps;
+    bool wants_help;
 
     enum {
         COMPILATION_STAGE_ASM,

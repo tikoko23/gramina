@@ -29,6 +29,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // `cli_handle_args` prints the help message, so returning is enough here
+    if (S.wants_help) {
+        cli_state_free(&S);
+        return 0;
+    }
+
     if (!GRAMINA_UNIX_BUILD && S.max_stage == COMPILATION_STAGE_BIN) {
         log_fmt(GRAMINA_LOG_LEVEL_NONE, "Emitting native binaries isn't supported on non-POSIX systems\n"
                                         "!! Manually link object files instead\n"
