@@ -1,5 +1,8 @@
 #pragma once
 
-void TEST_Hello();
-void TEST_Exit();
-void TEST_TypeToString();
+#include "tester.h"
+
+TEST(Hello);
+TEST(Exit);
+TEST(TypeToString);
+TEST(SStream);

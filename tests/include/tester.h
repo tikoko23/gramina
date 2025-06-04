@@ -11,6 +11,7 @@
 #endif
 
 #define MAKE_TEST(_name) ((Test){ .name = #_name, .tester = TEST_ ## _name })
+#define TEST(name) void TEST_ ## name()
 
 #include <setjmp.h>
 

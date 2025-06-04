@@ -84,6 +84,7 @@ int main(int argc, char **argv) {
         MAKE_TEST(Hello),
         MAKE_TEST(Exit),
         MAKE_TEST(TypeToString),
+        MAKE_TEST(SStream),
     };
 
     return run_tests(tests, (sizeof tests) / (sizeof tests[0]));
