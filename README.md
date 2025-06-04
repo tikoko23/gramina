@@ -36,13 +36,6 @@ A gramina file can be compiled using the `gramina` binary.
 ```bash
 ./gramina <filename>
 ```
-
-This binary generates an `out.ll` file.
-This file can be used with an LLVM frontend (such as clang):
-```bash
-clang -o test_executable ./out.ll host.c
-```
-
 Run `./gramina --help` for more information.
 
 ## Running examples
