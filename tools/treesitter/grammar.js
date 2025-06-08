@@ -170,7 +170,7 @@ module.exports = grammar({
         choice(
           "&",
           "[]",
-          seq("[", /[0-9]+/, "]")
+          seq("[", $.number, "]")
         )
       )),
     ),
