@@ -214,13 +214,18 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
             AstNode *type_node = cur->left->left;
 
             // This is kind of a hack but who cares?
-            uint64_t old_flags = type_node->flags;
-            type_node->flags |= GRAMINA_AST_CONST_TYPE;
+            uint64_t old_flags;
+            if (this->flags & GRAMINA_AST_CONST_TYPE) {
+                old_flags = type_node->flags;
+                type_node->flags |= GRAMINA_AST_CONST_TYPE;
+            }
 
             field->type = type_from_ast_node(S, type_node);
             field->index = index;
 
-            type_node->flags = old_flags;
+            if (this->flags & GRAMINA_AST_CONST_TYPE) {
+                type_node->flags = old_flags;
+            }
 
             llvm_fields[index++] = field->type.llvm;
 
