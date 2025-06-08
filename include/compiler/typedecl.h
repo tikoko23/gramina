@@ -59,6 +59,10 @@ struct gramina_type {
         };
         /* POINTER */ struct gramina_type *pointer_type;
         /* SLICE */ struct gramina_type *slice_type;
+        /* ARRAY */ struct {
+            struct gramina_type *element_type;
+            size_t length;
+        };
         /* STRUCT */ struct {
             struct gramina_hashmap fields;
             struct gramina_string struct_name;

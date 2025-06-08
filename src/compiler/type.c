@@ -193,6 +193,19 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
 
         return typ;
     }
+    case GRAMINA_AST_TYPE_ARRAY: {
+        Type typ = {
+            .kind = GRAMINA_TYPE_ARRAY,
+            .length = this->value.array_length,
+        };
+
+        typ.element_type = gramina_malloc(sizeof *typ.element_type);
+        *typ.element_type = type_from_ast_node(S, this->left);
+
+        typ.llvm = LLVMArrayType2(typ.element_type->llvm, typ.length);
+
+        return typ;
+    }
     case GRAMINA_AST_STRUCT_DEF: {
         const AstNode *cur = this;
         size_t field_count = 0;
@@ -357,6 +370,16 @@ String gramina_type_to_str(const Type *this) {
 
         return subtype;
     }
+    case GRAMINA_TYPE_ARRAY: {
+        String subtype = type_to_str(this->element_type);
+        if (this->is_const) {
+            str_cat_cstr(&subtype, " const");
+        }
+
+        str_cat_cfmt(&subtype, "[{sz}]", this->length);
+
+        return subtype;
+    }
     default:
         break;
     }
@@ -424,6 +447,10 @@ bool gramina_type_is_same(const Type *a, const Type *b) {
         return type_is_same(a->pointer_type, b->pointer_type);
     case GRAMINA_TYPE_SLICE:
         return type_is_same(a->slice_type, b->slice_type);
+    case GRAMINA_TYPE_ARRAY:
+        return a->length == b->length
+            && type_is_same(a->element_type, b->element_type);
+
     case GRAMINA_TYPE_STRUCT:
         if (str_cmp(&a->struct_name, &b->struct_name) != 0) {
             return false;
@@ -614,6 +641,19 @@ Type gramina_type_dup(const Type *this) {
 
         return typ;
     }
+    case GRAMINA_TYPE_ARRAY: {
+        Type typ = {
+            .kind = GRAMINA_TYPE_ARRAY,
+            .length = this->length,
+            .llvm = this->llvm,
+            .is_const = this->is_const,
+        };
+
+        typ.element_type = gramina_malloc(sizeof *typ.element_type);
+        *typ.element_type = type_dup(this->element_type);
+
+        return typ;
+    }
     case GRAMINA_TYPE_STRUCT: {
         Type typ = {
             .kind = GRAMINA_TYPE_STRUCT,
@@ -675,6 +715,11 @@ void gramina_type_free(Type *this) {
         type_free(this->slice_type);
         gramina_free(this->slice_type);
         this->slice_type = NULL;
+        break;
+    case GRAMINA_TYPE_ARRAY:
+        type_free(this->element_type);
+        gramina_free(this->element_type);
+        this->element_type = NULL;
         break;
     case GRAMINA_TYPE_STRUCT:
         str_free(&this->struct_name);
