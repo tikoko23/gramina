@@ -14,7 +14,7 @@ GRAMINA_DECLARE_ARRAY(String, static);
 GRAMINA_IMPLEMENT_ARRAY(String, static);
 
 Value call(CompilerState *S, const Identifier *func, const Value *args, size_t n_params) {
-    bool is_sret = func->type.return_type->kind == GRAMINA_TYPE_STRUCT;
+    bool is_sret = kind_is_aggregate(func->type.return_type->kind);
 
     // In all cases, `llvm_args[0]` is reserved for sret
     LLVMValueRef llvm_args[n_params + 1];
@@ -94,7 +94,7 @@ static void register_params(CompilerState *S, LLVMValueRef func, const Type *fn_
         String *param_name = &param_names.items[i];
 
         LLVMValueRef llvm_param;
-        if (type->kind != GRAMINA_TYPE_STRUCT) {
+        if (!kind_is_aggregate(type->kind)) {
             char *cparam_name = str_to_cstr(param_name);
 
             LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cparam_name);
@@ -151,7 +151,7 @@ static bool validate_attributes(CompilerState *S, const Array(_GraminaSymAttr) *
 
 void function_def(CompilerState *S, AstNode *this) {
     Type fn_type = type_from_ast_node(S, this->left);
-    bool sret = fn_type.return_type->kind == GRAMINA_TYPE_STRUCT;
+    bool sret = kind_is_aggregate(fn_type.return_type->kind);
 
     StringView name = str_as_view(&this->value.identifier);
 

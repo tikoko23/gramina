@@ -57,6 +57,16 @@ static Type builtin_type(const StringView *i) {
     };
 }
 
+bool gramina_kind_is_aggregate(TypeKind k) {
+    switch (k) {
+    case GRAMINA_TYPE_STRUCT:
+    case GRAMINA_TYPE_ARRAY:
+        return true;
+    default:
+        return false;
+    }
+}
+
 Type gramina_mk_pointer_type(const Type *pointed) {
     Type typ = {
         .kind = GRAMINA_TYPE_POINTER,
@@ -130,7 +140,7 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
         };
 
         Type return_type = type_from_ast_node(S, this->right);
-        bool sret = return_type.kind == GRAMINA_TYPE_STRUCT;
+        bool sret = kind_is_aggregate(return_type.kind);
 
         typ.return_type = gramina_malloc(sizeof *typ.return_type);
         *typ.return_type = return_type;

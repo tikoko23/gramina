@@ -49,7 +49,7 @@ Value member(CompilerState *S, const Value *operand, const StringView *field_nam
         }, 2, ""
     );
 
-    LLVMValueRef loaded = field->type.kind == GRAMINA_TYPE_STRUCT
+    LLVMValueRef loaded = kind_is_aggregate(field->type.kind)
                         ? result
                         : LLVMBuildLoad2(S->llvm_builder, field->type.llvm, result, "");
 

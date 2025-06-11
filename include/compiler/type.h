@@ -3,6 +3,8 @@
 
 #include "compiler/cstate.h"
 
+bool gramina_kind_is_aggregate(enum gramina_type_kind k);
+
 struct gramina_type gramina_mk_pointer_type(const struct gramina_type *pointed);
 
 struct gramina_type gramina_type_from_primitive(enum gramina_primitive this);

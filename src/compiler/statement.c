@@ -1,5 +1,8 @@
 #define GRAMINA_NO_NAMESPACE
 
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+
 #include "compiler/conversions.h"
 #include "compiler/errors.h"
 #include "compiler/expressions.h"
@@ -126,7 +129,8 @@ void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
     try_load_inplace(S, &exp);
     convert_inplace(S, &exp, ret_type);
 
-    if (ret_type->kind == GRAMINA_TYPE_STRUCT) {
+    switch (ret_type->kind) {
+    case GRAMINA_TYPE_STRUCT:
         LLVMBuildMemCpy(
             S->llvm_builder,
             LLVMGetParam(function, 0), 8,
@@ -135,9 +139,23 @@ void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
         );
 
         LLVMBuildRetVoid(S->llvm_builder);
+        break;
 
-    } else {
+    case GRAMINA_TYPE_ARRAY: {
+        LLVMBuildMemCpy(
+            S->llvm_builder,
+            LLVMGetParam(function, 0), 8, // This too is a temporary hack for the
+                                          // same reasons mentioned in mem.c
+            exp.llvm, 8,
+            LLVMSizeOf(exp.type.llvm)
+        );
+
+        LLVMBuildRetVoid(S->llvm_builder);
+        break;
+    }
+    default:
         LLVMBuildRet(S->llvm_builder, exp.llvm);
+        break;
     }
 
     --S->reflection_depth;
@@ -254,7 +272,7 @@ void for_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
 
     declaration_statement(S, function, this->left->left);
 
-    LLVMBuildBr(S->llvm_builder, condition_block);
+    LLVMValueRef inst = LLVMBuildBr(S->llvm_builder, condition_block);
 
     LLVMPositionBuilderAtEnd(S->llvm_builder, condition_block);
     Value predicate = expression(S, function, this->left->right->left);
