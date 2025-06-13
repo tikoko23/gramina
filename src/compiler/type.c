@@ -159,7 +159,7 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
             } while ((current = current->right));
         }
 
-        LLVMTypeRef params[typ.param_types.length + sret];
+        LLVMTypeRef params[typ.param_types.length + sret + 1];
         array_foreach_ref(_GraminaType, i, t, typ.param_types) {
             LLVMTypeRef llvm_type = t->kind == GRAMINA_TYPE_STRUCT
                                   ? LLVMPointerType(t->llvm, 0)
@@ -580,7 +580,9 @@ Type gramina_decltype(const CompilerState *S, const AstNode *exp) {
 CoercionResult gramina_primitive_coercion(const Type *p, const Type *q) {
     if (p->kind != GRAMINA_TYPE_PRIMITIVE
      || q->kind != GRAMINA_TYPE_PRIMITIVE
-     || primitive_is_unsigned(p->primitive) != primitive_is_unsigned(q->primitive)) {
+     || (primitive_is_integral(p->primitive) && primitive_is_integral(q->primitive)
+      && primitive_is_unsigned(p->primitive) != primitive_is_unsigned(q->primitive)
+        )) {
         return (CoercionResult) {
             .greater_type = {
                 .kind = GRAMINA_TYPE_INVALID,

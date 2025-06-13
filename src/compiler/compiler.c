@@ -1,6 +1,12 @@
 #define GRAMINA_NO_NAMESPACE
 
+#include <llvm-c/Core.h>
+#include <llvm-c/Error.h>
+#include <llvm-c/TargetMachine.h>
+#include <llvm-c/Types.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+
+#include "common/log.h"
 
 #include "compiler/cstate.h"
 #include "compiler/struct.h"
@@ -35,11 +41,12 @@ static int deinit_state(CompilerState *S) {
     return 0;
 }
 
-CompileResult gramina_compile(AstNode *root) {
+CompileResult gramina_compile_for_machine(AstNode *root, LLVMTargetMachineRef tm) {
     CompilerState S = {
         .has_error = false,
         .scopes = mk_array(GraminaScope),
         .reflection = mk_array(_GraminaReflection),
+        .llvm_target_machine = tm,
     };
 
     S.status = init_state(&S);
@@ -105,10 +112,71 @@ CompileResult gramina_compile(AstNode *root) {
         };
     }
 
+    /** This feature will be enabled after array related bugs are resolved 
+     *
+    LLVMPassBuilderOptionsRef opt = LLVMCreatePassBuilderOptions();
+    LLVMPassBuilderOptionsSetVerifyEach(opt, true);
+
+    LLVMErrorRef err;
+    if ((err = LLVMRunPasses(S.llvm_module, "default<O3>", S.llvm_target_machine, opt))) {
+        char *msg = LLVMGetErrorMessage(err);
+
+        String desc = str_cfmt("LLVMRunPasses: {cstr}\n", msg);
+
+        LLVMDisposeErrorMessage(msg);
+        LLVMDisposePassBuilderOptions(opt);
+
+        return (CompileResult) {
+            .status = GRAMINA_COMPILE_ERR_LLVM,
+            .error = {
+                .description = desc,
+                .pos = { 0, 0, 0 },
+            },
+        };
+    }
+
+    LLVMDisposePassBuilderOptions(opt);
+    */
+
     return (CompileResult) {
         .module = S.llvm_module,
         .status = GRAMINA_COMPILE_ERR_NONE,
     };
+}
+
+CompileResult gramina_compile(AstNode *root) {
+    char *err;
+    char *triple = LLVMGetDefaultTargetTriple();
+    LLVMTargetRef target;
+    if (LLVMGetTargetFromTriple(triple, &target, &err)) {
+        elog_fmt("LLVM target triple '{cstr}': {cstr}\n", triple, err);
+        LLVMDisposeMessage(err);
+        LLVMDisposeMessage(triple);
+        return (CompileResult) {
+            .status = GRAMINA_COMPILE_ERR_LLVM,
+            .error = {
+                .description = mk_str_c("LLVM encountered an error during target machine generation"),
+                .pos = { 0, 0, 0 },
+            },
+        };
+    }
+
+    LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+        target,
+        triple,
+        "generic",
+        "",
+        LLVMCodeGenLevelDefault,
+        LLVMRelocDefault,
+        LLVMCodeModelDefault
+    );
+
+    LLVMDisposeMessage(triple);
+
+    CompileResult ret = gramina_compile_for_machine(root, tm);
+
+    LLVMDisposeTargetMachine(tm);
+    return ret;
 }
 
 

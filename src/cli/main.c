@@ -49,6 +49,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (!(S.machine = cli_get_machine())) {
+        return 1;
+    }
+
     Pipeline P = pipeline_default(&S);
 
     TranslationUnit tus[S.sources.length];
@@ -70,17 +74,6 @@ int main(int argc, char **argv) {
     }
 
     const size_t length = (sizeof tus) / (sizeof tus[0]);
-
-    if (!(S.machine = cli_get_machine())) {
-        pipeline_free(&P);
-        cli_state_free(&S);
-
-        for (size_t i = 0; i < length; ++i) {
-            tu_free(tus + i);
-        }
-
-        return 1;
-    }
 
     bool err = false;
     const char *emit_type;

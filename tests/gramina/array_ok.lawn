@@ -11,17 +11,60 @@ fn Thing() {
 #extern("sqrtf")
 fn Sqrtf(float x) -> float;
 
+#extern("powf")
+fn Powf(float x, float y) -> float;
+
 #extern("exit")
 fn Exit(int status);
 
-// fn PrintFloat(float x);
+// POSIX only
+#extern("write")
+fn Write(int fd, void& buf, ulong n);
+
+fn Putchar(byte ch) {
+    Write(1, \$(\long(&ch)), 1u);
+}
+
+fn Absf(float x) -> float {
+    if x < 0 {
+        return -x;
+    }
+
+    return x;
+}
+
+fn PrintUlong(ulong n) {
+    if n == 0u {
+        Putchar('0');
+        return;
+    }
+
+    while n != 0u {
+        Putchar(\$(n % 10u + \ulong('0')));
+        n = n / 10u;
+    }
+}
+
+fn PrintFloat(float x) {
+    const uint precision = 6u;
+
+    if x < 0 {
+        Putchar('-');
+    }
+
+    PrintUlong(\$(Absf(x)));
+    Putchar('.');
+
+    long whole = \$(x);
+    PrintUlong(\$((x - whole) * Powf(10, \$(precision))));
+}
 
 fn BatchLen(const Vector2[8]& vecs) -> float[8] {
     float[8] out;
 
     for ulong i = 0u; i < 8u; i = i + 1u {
         const Vector2& v = &(@vecs)[i];
-        out[0] = Sqrtf(v.x * v.x + v.y * v.y);
+        out[i] = Sqrtf(v.x * v.x + v.y * v.y);
     }
 
     return out;
@@ -38,8 +81,10 @@ fn Main() {
 
     for ulong i = 0u; i < 8u; i = i + 1u {
         float f = lengths[i];
-        // PrintFloat(f);
+        PrintFloat(f);
     }
+
+    PrintFloat(23.0f);
 
     Exit(0);
 }

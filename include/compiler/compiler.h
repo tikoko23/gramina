@@ -2,6 +2,7 @@
 #define __GRAMINA_PARSER_COMPILER_H
 
 #include <llvm-c/Types.h>
+#include <llvm-c/TargetMachine.h>
 
 #include "common/array.h"
 #include "common/str.h"
@@ -39,6 +40,8 @@ struct gramina_string_view gramina_compile_error_code_to_str(enum gramina_compil
 
 void gramina_free_compile_error(struct gramina_compile_error *this);
 
+struct gramina_compile_result gramina_compile(struct gramina_ast_node *root);
+struct gramina_compile_result gramina_compile_for_machine(struct gramina_ast_node *root, LLVMTargetMachineRef tm);
 struct gramina_compile_result gramina_compile(struct gramina_ast_node *root);
 
 #endif

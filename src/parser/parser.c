@@ -1,8 +1,8 @@
-#include <stdint.h>
 #define GRAMINA_NO_NAMESPACE
 #define PAUSE_ON_ERR 0
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "common/array.h"
