@@ -132,7 +132,14 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
             };
         }
 
-        return type_dup(&ident->type);
+        Type ret = type_dup(&ident->type);
+        if ((this->flags & GRAMINA_AST_CONST_TYPE) && ret.kind == GRAMINA_TYPE_STRUCT) {
+            hashmap_foreach(StructField, _, field, ret.fields) {
+                field->type.is_const = true;
+            }
+        }
+
+        return ret;
     }
     case GRAMINA_AST_FUNCTION_TYPE: {
         Type typ = {
