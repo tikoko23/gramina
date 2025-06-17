@@ -21,6 +21,21 @@ TEST(ArrayOk) {
     Stream source = mk_stream_open_c("gramina/array_ok.lawn", "r");
     bool success = check_compilation_success(&source);
 
+    stream_free(&source);
+
+    if (success) {
+        test_ok();
+    } else {
+        test_fail();
+    }
+}
+
+TEST(ArrayNDim) {
+    Stream source = mk_stream_open_c("gramina/matmul.lawn", "r");
+    bool success = check_compilation_success(&source);
+
+    stream_free(&source);
+
     if (success) {
         test_ok();
     } else {
