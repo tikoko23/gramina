@@ -20,6 +20,21 @@ int get_op_from_ast_node(const AstNode *node) {
     case GRAMINA_AST_OP_UNARY_MINUS:
         return GRAMINA_OP_NEGATION;
 
+    case GRAMINA_AST_OP_ASSIGN:
+        return GRAMINA_OP_ASSIGN;
+    case GRAMINA_AST_OP_ASSIGN_ADD:
+        return GRAMINA_OP_A_ADD;
+    case GRAMINA_AST_OP_ASSIGN_SUB:
+        return GRAMINA_OP_A_SUB;
+    case GRAMINA_AST_OP_ASSIGN_MUL:
+        return GRAMINA_OP_A_MUL;
+    case GRAMINA_AST_OP_ASSIGN_DIV:
+        return GRAMINA_OP_A_DIV;
+    case GRAMINA_AST_OP_ASSIGN_REM:
+        return GRAMINA_OP_A_REM;
+    case GRAMINA_AST_OP_ASSIGN_CAT:
+        return GRAMINA_OP_A_CAT;
+
     case GRAMINA_AST_OP_EQUAL:
         return GRAMINA_OP_EQUAL;
     case GRAMINA_AST_OP_INEQUAL:

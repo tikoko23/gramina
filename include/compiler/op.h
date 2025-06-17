@@ -18,8 +18,18 @@ enum gramina_arithmetic_un_op {
     GRAMINA_OP_NEGATION,
 };
 
+enum gramina_assign_op {
+    GRAMINA_OP_ASSIGN = GRAMINA_OP_NEGATION + 1,
+    GRAMINA_OP_A_ADD,
+    GRAMINA_OP_A_SUB,
+    GRAMINA_OP_A_MUL,
+    GRAMINA_OP_A_DIV,
+    GRAMINA_OP_A_REM,
+    GRAMINA_OP_A_CAT,
+};
+
 enum gramina_comparison_op {
-    GRAMINA_OP_EQUAL = GRAMINA_OP_NEGATION + 1,
+    GRAMINA_OP_EQUAL = GRAMINA_OP_A_CAT + 1,
     GRAMINA_OP_INEQUAL,
     GRAMINA_OP_LT,
     GRAMINA_OP_LTE,

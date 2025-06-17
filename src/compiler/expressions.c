@@ -91,6 +91,12 @@ Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
     case GRAMINA_AST_OP_DEREF:
         return deref_expr(S, function, this);
     case GRAMINA_AST_OP_ASSIGN:
+    case GRAMINA_AST_OP_ASSIGN_ADD:
+    case GRAMINA_AST_OP_ASSIGN_SUB:
+    case GRAMINA_AST_OP_ASSIGN_MUL:
+    case GRAMINA_AST_OP_ASSIGN_DIV:
+    case GRAMINA_AST_OP_ASSIGN_REM:
+    case GRAMINA_AST_OP_ASSIGN_CAT:
         return assign_expr(S, function, this);
     case GRAMINA_AST_OP_EQUAL:
     case GRAMINA_AST_OP_INEQUAL:
@@ -184,7 +190,7 @@ Value assign_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     --S->reflection_depth;
     pop_reflection(S);
 
-    Value ret = assign(S, &target, &value);
+    Value ret = assign(S, &target, &value, get_op_from_ast_node(this));
 
     value_free(&value);
     value_free(&target);

@@ -1,12 +1,14 @@
-#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
-#include <llvm-c/Target.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/Target.h>
+#include <llvm-c/Types.h>
 
+#include "compiler/arithmetic.h"
 #include "compiler/conversions.h"
 #include "compiler/errors.h"
 #include "compiler/mem.h"
+#include "compiler/op.h"
 
 void store(CompilerState *S, const Value *value, LLVMValueRef into) {
     switch (value->type.kind) {
@@ -157,7 +159,7 @@ Value deref(CompilerState *S, const Value *_operand) {
     return ret;
 }
 
-Value assign(CompilerState *S, Value *target, const Value *from) {
+Value assign(CompilerState *S, Value *target, const Value *from, AssignOp op) {
     LLVMValueRef ptr;
     switch (target->class) {
     case GRAMINA_CLASS_ALLOCA:
@@ -181,22 +183,53 @@ Value assign(CompilerState *S, Value *target, const Value *from) {
         return invalid_value();
     }
 
-    Value loaded = try_load(S, from);
 
-    if (!type_can_convert(S, &loaded.type, &target->type)) {
-        err_implicit_conv(S, &loaded.type, &target->type);
-        value_free(&loaded);
+    if (!type_can_convert(S, &from->type, &target->type)) {
+        err_implicit_conv(S, &from->type, &target->type);
         return invalid_value();
     }
 
-    convert_inplace(S, &loaded, &target->type);
+    ArithmeticBinOp aop;
 
-    store(S, &loaded, ptr);
-    // LLVMBuildStore(S->llvm_builder, value.llvm, ptr);
+    switch (op) {
+    case GRAMINA_OP_ASSIGN: {
+        Value loaded = try_load(S, from);
+        convert_inplace(S, &loaded, &target->type);
 
-    loaded.class = GRAMINA_CLASS_RVALUE;
+        store(S, &loaded, ptr);
+        // LLVMBuildStore(S->llvm_builder, value.llvm, ptr);
 
-    return loaded;
+        loaded.class = GRAMINA_CLASS_RVALUE;
+
+        return loaded;
+    }
+    case GRAMINA_OP_A_CAT: {
+        StringView op = mk_sv_c("~=");
+        err_illegal_op(S, &target->type, &from->type, &op);
+        return invalid_value();
+    }
+    case GRAMINA_OP_A_ADD:
+        aop = GRAMINA_OP_ADD;
+        break;
+    case GRAMINA_OP_A_SUB:
+        aop = GRAMINA_OP_SUB;
+        break;
+    case GRAMINA_OP_A_MUL:
+        aop = GRAMINA_OP_MUL;
+        break;
+    case GRAMINA_OP_A_DIV:
+        aop = GRAMINA_OP_DIV;
+        break;
+    case GRAMINA_OP_A_REM:
+        aop = GRAMINA_OP_REM;
+        break;
+    }
+
+    Value result = arithmetic(S, target, from, aop);
+    Value ret = assign(S, target, &result, GRAMINA_OP_ASSIGN);
+
+    value_free(&result);
+    return ret;
 }
 
 LLVMValueRef build_alloca(CompilerState *S, const Type *type, const char *name) {
