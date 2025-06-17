@@ -30,7 +30,7 @@ Identifier *declaration(CompilerState *S, const StringView *name, const Type *ty
     };
 
     char *cname = sv_to_cstr(name);
-    ident->llvm = LLVMBuildAlloca(S->llvm_builder, ident->type.llvm, cname);
+    ident->llvm = build_alloca(S, &ident->type, cname);
     gramina_free(cname);
 
     if (init) {
@@ -144,9 +144,9 @@ void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
     case GRAMINA_TYPE_ARRAY: {
         LLVMBuildMemCpy(
             S->llvm_builder,
-            LLVMGetParam(function, 0), 8, // This too is a temporary hack for the
-                                          // same reasons mentioned in mem.c
-            exp.llvm, 8,
+            LLVMGetParam(function, 0), 16, // This too is a temporary hack for the
+                                           // same reasons mentioned in mem.c
+            exp.llvm, 16,
             LLVMSizeOf(exp.type.llvm)
         );
 

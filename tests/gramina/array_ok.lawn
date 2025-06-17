@@ -40,7 +40,7 @@ fn PrintUlong(ulong n) {
     }
 
     while n != 0u {
-        Putchar(\$(n % 10u + \ulong('0')));
+        Putchar(\$(n % 10u) + '0');
         n = n / 10u;
     }
 }

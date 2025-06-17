@@ -1,3 +1,4 @@
+#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include <llvm-c/Target.h>
@@ -18,7 +19,7 @@ void store(CompilerState *S, const Value *value, LLVMValueRef into) {
         );
         break;
     case GRAMINA_TYPE_ARRAY: {
-        size_t align = 8; // This will be adjusted properly after a simple design change 
+        size_t align = 16; // This will be adjusted properly after a simple design change 
         LLVMBuildMemCpy(
             S->llvm_builder,
             into, align,
@@ -196,4 +197,14 @@ Value assign(CompilerState *S, Value *target, const Value *from) {
     loaded.class = GRAMINA_CLASS_RVALUE;
 
     return loaded;
+}
+
+LLVMValueRef build_alloca(CompilerState *S, const Type *type, const char *name) {
+    LLVMValueRef ret = LLVMBuildAlloca(S->llvm_builder, type->llvm, name);
+
+    if (type->kind == GRAMINA_TYPE_ARRAY) {
+        LLVMSetAlignment(ret, 16);
+    }
+
+    return ret;
 }

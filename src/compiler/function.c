@@ -20,7 +20,7 @@ Value call(CompilerState *S, const Identifier *func, const Value *args, size_t n
     LLVMValueRef llvm_args[n_params + 1];
 
     llvm_args[0] = is_sret
-                 ? LLVMBuildAlloca(S->llvm_builder, func->type.return_type->llvm, "")
+                 ? build_alloca(S, func->type.return_type, "")
                  : NULL;
 
     for (size_t i = 1; i < n_params + 1; ++i) {
@@ -97,7 +97,7 @@ static void register_params(CompilerState *S, LLVMValueRef func, const Type *fn_
         if (!kind_is_aggregate(type->kind)) {
             char *cparam_name = str_to_cstr(param_name);
 
-            LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cparam_name);
+            LLVMValueRef allocated = build_alloca(S, type, cparam_name);
             gramina_free(cparam_name);
 
             LLVMBuildStore(S->llvm_builder, temp, allocated);
