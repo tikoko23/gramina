@@ -84,15 +84,17 @@ CoercionResult coerce_primitives(CompilerState *S, const Value *left, const Valu
         return coerced;
     }
 
+    print_cfmt("({so}, {so}) greater: {so}\n", type_to_str(&left->type), type_to_str(&right->type), type_to_str(&coerced.greater_type));
+
+    *result_lhs = try_load(S, left);
+    *result_rhs = try_load(S, right);
+
     if (left->type.primitive == right->type.primitive) {
-        *result_lhs = try_load(S, left);
-        *result_rhs = try_load(S, right);
+        return coerced;
     } else if (coerced.is_right_promoted) {
-        *result_lhs = try_load(S, left);
-        *result_rhs = convert(S, right, &coerced.greater_type);
+        convert_inplace(S, result_rhs, &coerced.greater_type);
     } else {
-        *result_lhs = convert(S, left, &coerced.greater_type);
-        *result_rhs = try_load(S, right);
+        convert_inplace(S, result_lhs, &coerced.greater_type);
     }
 
     return coerced;
