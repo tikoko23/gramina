@@ -1,11 +1,11 @@
 fn MatMul(const float[4][4]& a, const float[4][4]& b) -> float[4][4] {
     float[4][4] c;
 
-    for uint i = 0u; i < 4u; i = i + 1u {
-        for uint j = 0u; j < 4u; j = j + 1u {
+    for uint i = 0u; i < 4u; i += 1u {
+        for uint j = 0u; j < 4u; j += 1u {
             c[i][j] = 0;
 
-            for uint k = 0u; k < 4u; k = k + 1u {
+            for uint k = 0u; k < 4u; k += 1u {
                 c[i][j] = c[i][j] + (@a)[i][k] * (@b)[k][j];
             }
         }

@@ -39,11 +39,11 @@ fn PrintUlong(ulong n) {
 
     while n != 0u {
         buf[i] = \$(n % 10u) + '0';
-        i = i + 1u;
-        n = n / 10u;
+        i += 1u;
+        n /= 10u;
     }
 
-    for int j = \$(i - 1u); j >= 0; j = j - 1 {
+    for int j = \$(i - 1u); j >= 0; j -= 1 {
         Putchar(buf[j]);
     }
 }
@@ -59,13 +59,13 @@ fn PrintFloat(float x) {
 
     PrintUlong(whole);
     Putchar('.');
-    PrintUlong(\$((x - whole) * Powf(10, \$(precision))));
+    PrintUlong(\$((Absf(x) - whole) * Powf(10, \$(precision))));
 }
 
 fn BatchLen(const Vector2[8]& vecs) -> float[8] {
     float[8] out;
 
-    for ulong i = 0u; i < 8u; i = i + 1u {
+    for uint i = 0u; i < 8u; i += 1u {
         const Vector2& v = &(@vecs)[i];
         out[i] = Sqrtf(v.x * v.x + v.y * v.y);
     }
@@ -77,14 +77,14 @@ fn BatchLen(const Vector2[8]& vecs) -> float[8] {
 fn Main() {
     Vector2[8] positions;
 
-    for uint i = 0u; i < 8u; i = i + 1u {
+    for uint i = 0u; i < 8u; i += 1u {
         positions[i].x = \$(i);
         positions[i].y = \$(i);
     }
 
     float[8] lengths = BatchLen(&positions);
 
-    for ulong i = 0u; i < 8u; i = i + 1u {
+    for uint i = 0u; i < 8u; i += 1u {
         float f = lengths[i];
         PrintFloat(f);
         Putchar('\n');
