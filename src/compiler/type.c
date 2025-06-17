@@ -57,6 +57,16 @@ static Type builtin_type(const StringView *i) {
     };
 }
 
+bool gramina_kind_is_aggregate(TypeKind k) {
+    switch (k) {
+    case GRAMINA_TYPE_STRUCT:
+    case GRAMINA_TYPE_ARRAY:
+        return true;
+    default:
+        return false;
+    }
+}
+
 Type gramina_mk_pointer_type(const Type *pointed) {
     Type typ = {
         .kind = GRAMINA_TYPE_POINTER,
@@ -122,7 +132,14 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
             };
         }
 
-        return type_dup(&ident->type);
+        Type ret = type_dup(&ident->type);
+        if ((this->flags & GRAMINA_AST_CONST_TYPE) && ret.kind == GRAMINA_TYPE_STRUCT) {
+            hashmap_foreach(StructField, _, field, ret.fields) {
+                field->type.is_const = true;
+            }
+        }
+
+        return ret;
     }
     case GRAMINA_AST_FUNCTION_TYPE: {
         Type typ = {
@@ -130,7 +147,7 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
         };
 
         Type return_type = type_from_ast_node(S, this->right);
-        bool sret = return_type.kind == GRAMINA_TYPE_STRUCT;
+        bool sret = kind_is_aggregate(return_type.kind);
 
         typ.return_type = gramina_malloc(sizeof *typ.return_type);
         *typ.return_type = return_type;
@@ -149,7 +166,7 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
             } while ((current = current->right));
         }
 
-        LLVMTypeRef params[typ.param_types.length + sret];
+        LLVMTypeRef params[typ.param_types.length + sret + 1];
         array_foreach_ref(_GraminaType, i, t, typ.param_types) {
             LLVMTypeRef llvm_type = t->kind == GRAMINA_TYPE_STRUCT
                                   ? LLVMPointerType(t->llvm, 0)
@@ -190,6 +207,19 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
 
         typ.slice_type = gramina_malloc(sizeof *typ.slice_type);
         *typ.slice_type = type_from_ast_node(S, this->left);
+
+        return typ;
+    }
+    case GRAMINA_AST_TYPE_ARRAY: {
+        Type typ = {
+            .kind = GRAMINA_TYPE_ARRAY,
+            .length = this->value.array_length,
+        };
+
+        typ.element_type = gramina_malloc(sizeof *typ.element_type);
+        *typ.element_type = type_from_ast_node(S, this->left);
+
+        typ.llvm = LLVMArrayType2(typ.element_type->llvm, typ.length);
 
         return typ;
     }
@@ -362,6 +392,16 @@ String gramina_type_to_str(const Type *this) {
 
         return subtype;
     }
+    case GRAMINA_TYPE_ARRAY: {
+        String subtype = type_to_str(this->element_type);
+        if (this->is_const) {
+            str_cat_cstr(&subtype, " const");
+        }
+
+        str_cat_cfmt(&subtype, "[{sz}]", this->length);
+
+        return subtype;
+    }
     default:
         break;
     }
@@ -429,6 +469,10 @@ bool gramina_type_is_same(const Type *a, const Type *b) {
         return type_is_same(a->pointer_type, b->pointer_type);
     case GRAMINA_TYPE_SLICE:
         return type_is_same(a->slice_type, b->slice_type);
+    case GRAMINA_TYPE_ARRAY:
+        return a->length == b->length
+            && type_is_same(a->element_type, b->element_type);
+
     case GRAMINA_TYPE_STRUCT:
         if (str_cmp(&a->struct_name, &b->struct_name) != 0) {
             return false;
@@ -543,7 +587,9 @@ Type gramina_decltype(const CompilerState *S, const AstNode *exp) {
 CoercionResult gramina_primitive_coercion(const Type *p, const Type *q) {
     if (p->kind != GRAMINA_TYPE_PRIMITIVE
      || q->kind != GRAMINA_TYPE_PRIMITIVE
-     || primitive_is_unsigned(p->primitive) != primitive_is_unsigned(q->primitive)) {
+     || (primitive_is_integral(p->primitive) && primitive_is_integral(q->primitive)
+      && primitive_is_unsigned(p->primitive) != primitive_is_unsigned(q->primitive)
+        )) {
         return (CoercionResult) {
             .greater_type = {
                 .kind = GRAMINA_TYPE_INVALID,
@@ -619,6 +665,19 @@ Type gramina_type_dup(const Type *this) {
 
         return typ;
     }
+    case GRAMINA_TYPE_ARRAY: {
+        Type typ = {
+            .kind = GRAMINA_TYPE_ARRAY,
+            .length = this->length,
+            .llvm = this->llvm,
+            .is_const = this->is_const,
+        };
+
+        typ.element_type = gramina_malloc(sizeof *typ.element_type);
+        *typ.element_type = type_dup(this->element_type);
+
+        return typ;
+    }
     case GRAMINA_TYPE_STRUCT: {
         Type typ = {
             .kind = GRAMINA_TYPE_STRUCT,
@@ -680,6 +739,11 @@ void gramina_type_free(Type *this) {
         type_free(this->slice_type);
         gramina_free(this->slice_type);
         this->slice_type = NULL;
+        break;
+    case GRAMINA_TYPE_ARRAY:
+        type_free(this->element_type);
+        gramina_free(this->element_type);
+        this->element_type = NULL;
         break;
     case GRAMINA_TYPE_STRUCT:
         str_free(&this->struct_name);

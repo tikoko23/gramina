@@ -2,6 +2,7 @@
 #define PAUSE_ON_ERR 0
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "common/array.h"
@@ -579,7 +580,10 @@ static AstNode *global_statement(ParserState *S) {
 
     array_free(_GraminaSymAttr, &attribs);
 
-    SET_ERR(S, mk_str_c("expected 'fn' or 'struct'"));
+    if (!HAS_ERR(S)) {
+        SET_ERR(S, mk_str_c("expected 'fn' or 'struct'"));
+    }
+
     return NULL;
 }
 
@@ -624,7 +628,9 @@ static AstNode *identifier(ParserState *S);
 static AstNode *declaration_statement(ParserState *S) {
     AstNode *type = typename(S);
     if (!type) {
-        SET_ERR(S, mk_str_c("expected typename"));
+        if (!HAS_ERR(S)) {
+            SET_ERR(S, mk_str_c("expected typename"));
+        }
 
         return NULL;
     }
@@ -1015,6 +1021,66 @@ static AstNode *identifier(ParserState *S) {
     return node;
 }
 
+static bool handle_array_type(ParserState *S, AstNode **cur, bool *const_next) {
+    *cur = mk_ast_node_lr(NULL, *cur, NULL);
+    (*cur)->type = GRAMINA_AST_TYPE_ARRAY;
+    (*cur)->pos = N_AFTER(S, -1).pos;
+
+    if (*const_next) {
+        (*cur)->flags |= GRAMINA_AST_CONST_TYPE;
+        *const_next = false;
+    }
+
+    const Token *tok = &CURRENT(S);
+
+    switch (tok->type) {
+    case GRAMINA_TOK_LIT_U32:
+    case GRAMINA_TOK_LIT_U64: {
+        uint64_t n = tok->type == GRAMINA_TOK_LIT_U32
+                   ? (size_t)tok->data.u32
+                   : (size_t)tok->data.u64;
+
+        // This check is necessary since length could be `0`, which passes all other checks
+        if (n <= 0) {
+            goto err;
+        }
+
+        (*cur)->value.array_length = n;
+        break;
+    }
+    case GRAMINA_TOK_LIT_I32:
+    case GRAMINA_TOK_LIT_I64: {
+        int64_t n = tok->type == GRAMINA_TOK_LIT_I32
+                  ? (int64_t)tok->data.i32
+                  : (int64_t)tok->data.i64;
+
+        // This check is necessary since length could be `0`, which passes all other checks
+        if (n <= 0) {
+            goto err;
+        }
+
+        (*cur)->value.array_length = n;
+        break;
+    }
+
+    err:
+    default:
+        SET_ERR(S, mk_str_c("array length must be a positive integer literal"));
+        return true;
+    }
+
+    CONSUME(S);
+
+    if (CURRENT(S).type != GRAMINA_TOK_SUBSCRIPT_RIGHT) {
+        SET_ERR(S, mk_str_c("unterminated '['"));
+        return true;
+    }
+
+    CONSUME(S);
+
+    return false;
+}
+
 static AstNode *typename(ParserState *S) {
     bool const_next = false;
 
@@ -1068,19 +1134,31 @@ static AstNode *typename(ParserState *S) {
             break;
         case GRAMINA_TOK_SUBSCRIPT_LEFT:
             CONSUME(S);
-            if (CURRENT(S).type == GRAMINA_TOK_SUBSCRIPT_RIGHT) {
+            switch (CURRENT(S).type) {
+            case GRAMINA_TOK_SUBSCRIPT_RIGHT:
                 cur = mk_ast_node_lr(NULL, cur, NULL);
                 cur->type = GRAMINA_AST_TYPE_SLICE;
                 cur->pos = N_AFTER(S, -1).pos;
-            
+
                 if (const_next) {
                     cur->flags |= GRAMINA_AST_CONST_TYPE;
                     const_next = false;
                 }
 
                 CONSUME(S);
-            } else {
-                SET_ERR(S, mk_str_c("unterminated '['"));
+                break;
+            case GRAMINA_TOK_LIT_I32:
+            case GRAMINA_TOK_LIT_U32:
+            case GRAMINA_TOK_LIT_I64:
+            case GRAMINA_TOK_LIT_U64:
+                if (handle_array_type(S, &cur, &const_next)) {
+                    ast_node_free(cur);
+                    return NULL;
+                }
+
+                break;
+            default:
+                SET_ERR(S, mk_str_c("expected ']' or integer literal"));
 
                 ast_node_free(cur);
                 return NULL;

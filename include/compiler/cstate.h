@@ -2,6 +2,7 @@
 #define __GRAMINA_COMPILER_CSTATE_H
 
 #include <llvm-c/Core.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
 
 #include "compiler.h"
@@ -22,6 +23,7 @@ GRAMINA_DECLARE_ARRAY(_GraminaReflection);
 struct gramina_compiler_state {
     LLVMModuleRef llvm_module;
     LLVMBuilderRef llvm_builder;
+    LLVMTargetMachineRef llvm_target_machine; 
 
     size_t reflection_depth;
     struct gramina_array(_GraminaReflection) reflection;

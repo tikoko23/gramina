@@ -168,7 +168,7 @@ bool tu_parse(CliState *S, TranslationUnit *T) {
 }
 
 bool tu_compile(CliState *S, TranslationUnit *T) {
-    T->compile_result = compile(T->parse_result.root);
+    T->compile_result = compile_for_machine(T->parse_result.root, S->machine);
 
     if (T->compile_result.status) {
         CompileError *err = &T->compile_result.error;
@@ -274,8 +274,8 @@ bool tu_emit_objects(CliState *S, TranslationUnit *tus, size_t n_tus, ObjectFile
                 ? ".o"
                 : ".S"
         );
-        char *err;
 
+        char *err;
         if (LLVMTargetMachineEmitToFile(S->machine, mod, replaced, (LLVMCodeGenFileType)type, &err)) {
             elog_fmt("{cstr}: {cstr}\n", replaced, err);
             LLVMDisposeErrorMessage(err);

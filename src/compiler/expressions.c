@@ -1,5 +1,6 @@
 #define GRAMINA_NO_NAMESPACE
 
+#include "compiler/access.h"
 #include "compiler/arithmetic.h"
 #include "compiler/conversions.h"
 #include "compiler/errors.h"
@@ -113,6 +114,8 @@ Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
         return invalid_value();
     case GRAMINA_AST_OP_MEMBER:
         return member_expr(S, function, this);
+    case GRAMINA_AST_OP_SUBSCRIPT:
+        return subscript_expr(S, function, this);
     default:
         err_illegal_node(S, this->type);
         S->error.pos = this->pos;
@@ -372,6 +375,21 @@ Value member_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     Value ret = member(S, &lhs, &rhs);
 
     value_free(&lhs);
+
+    if (!value_is_valid(&ret)) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
+Value subscript_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value scriptee = expression(S, function, this->left);
+    Value scripter = expression(S, function, this->right);
+    Value ret = subscript(S, &scriptee, &scripter);
+
+    value_free(&scriptee);
+    value_free(&scripter);
 
     if (!value_is_valid(&ret)) {
         S->error.pos = this->pos;

@@ -1,19 +1,37 @@
+#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
+
+#include <llvm-c/Target.h>
+#include <llvm-c/Core.h>
 
 #include "compiler/conversions.h"
 #include "compiler/errors.h"
 #include "compiler/mem.h"
 
 void store(CompilerState *S, const Value *value, LLVMValueRef into) {
-    if (value->type.kind == GRAMINA_TYPE_STRUCT) {
+    switch (value->type.kind) {
+    case GRAMINA_TYPE_STRUCT:
         LLVMBuildMemCpy(
             S->llvm_builder,
             into, 8,
             value->llvm, 8,
             LLVMSizeOf(value->type.llvm)
         );
-    } else {
+        break;
+    case GRAMINA_TYPE_ARRAY: {
+        size_t align = 16; // This will be adjusted properly after a simple design change 
+        LLVMBuildMemCpy(
+            S->llvm_builder,
+            into, align,
+            value->llvm, align,
+            LLVMSizeOf(value->type.llvm)
+        );
+
+        break;
+    }
+    default:
         LLVMBuildStore(S->llvm_builder, value->llvm, into);
+        break;
     }
 }
 
@@ -22,7 +40,7 @@ void try_load_inplace(CompilerState *S, Value *val) {
         return;
     }
 
-    if (val->type.kind == GRAMINA_TYPE_STRUCT) {
+    if (kind_is_aggregate(val->type.kind)) {
         Value new_val = {
             .llvm = val->llvm,
             .class = GRAMINA_CLASS_LVALUE,
@@ -56,7 +74,7 @@ Value try_load(CompilerState *S, const Value *val) {
         return value_dup(val);
     }
 
-    if (val->type.kind == GRAMINA_TYPE_STRUCT) {
+    if (kind_is_aggregate(val->type.kind)) {
         return (Value) {
             .llvm = val->llvm,
             .class = GRAMINA_CLASS_LVALUE,
@@ -111,8 +129,8 @@ Value deref(CompilerState *S, const Value *_operand) {
         return invalid_value();
     }
 
-    bool ptr_to_struct = operand.type.pointer_type->kind == GRAMINA_TYPE_STRUCT;
-    if (ptr_to_struct) {
+    bool ptr_to_aggregate = kind_is_aggregate(operand.type.pointer_type->kind);
+    if (ptr_to_aggregate) {
         Value ret = {
             .type = type_dup(operand.type.pointer_type),
             .llvm = operand.llvm,
@@ -179,4 +197,29 @@ Value assign(CompilerState *S, Value *target, const Value *from) {
     loaded.class = GRAMINA_CLASS_RVALUE;
 
     return loaded;
+}
+
+LLVMValueRef build_alloca(CompilerState *S, const Type *type, const char *name) {
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(S->llvm_builder);
+    LLVMBasicBlockRef first_block = current_block;
+    while (true) {
+        LLVMBasicBlockRef above = LLVMGetPreviousBasicBlock(first_block);
+        if (!above) {
+            break;
+        }
+
+        first_block = above;
+    }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, first_block);
+
+    LLVMValueRef ret = LLVMBuildAlloca(S->llvm_builder, type->llvm, name);
+
+    if (type->kind == GRAMINA_TYPE_ARRAY) {
+        LLVMSetAlignment(ret, 16);
+    }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, current_block);
+
+    return ret;
 }

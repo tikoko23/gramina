@@ -1,3 +1,5 @@
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include "common/log.h"
@@ -14,13 +16,13 @@ GRAMINA_DECLARE_ARRAY(String, static);
 GRAMINA_IMPLEMENT_ARRAY(String, static);
 
 Value call(CompilerState *S, const Identifier *func, const Value *args, size_t n_params) {
-    bool is_sret = func->type.return_type->kind == GRAMINA_TYPE_STRUCT;
+    bool is_sret = kind_is_aggregate(func->type.return_type->kind);
 
     // In all cases, `llvm_args[0]` is reserved for sret
     LLVMValueRef llvm_args[n_params + 1];
 
     llvm_args[0] = is_sret
-                 ? LLVMBuildAlloca(S->llvm_builder, func->type.return_type->llvm, "")
+                 ? build_alloca(S, func->type.return_type, "")
                  : NULL;
 
     for (size_t i = 1; i < n_params + 1; ++i) {
@@ -94,10 +96,10 @@ static void register_params(CompilerState *S, LLVMValueRef func, const Type *fn_
         String *param_name = &param_names.items[i];
 
         LLVMValueRef llvm_param;
-        if (type->kind != GRAMINA_TYPE_STRUCT) {
+        if (!kind_is_aggregate(type->kind)) {
             char *cparam_name = str_to_cstr(param_name);
 
-            LLVMValueRef allocated = LLVMBuildAlloca(S->llvm_builder, type->llvm, cparam_name);
+            LLVMValueRef allocated = build_alloca(S, type, cparam_name);
             gramina_free(cparam_name);
 
             LLVMBuildStore(S->llvm_builder, temp, allocated);
@@ -151,7 +153,7 @@ static bool validate_attributes(CompilerState *S, const Array(_GraminaSymAttr) *
 
 void function_def(CompilerState *S, AstNode *this) {
     Type fn_type = type_from_ast_node(S, this->left);
-    bool sret = fn_type.return_type->kind == GRAMINA_TYPE_STRUCT;
+    bool sret = kind_is_aggregate(fn_type.return_type->kind);
 
     StringView name = str_as_view(&this->value.identifier);
 
@@ -183,6 +185,14 @@ void function_def(CompilerState *S, AstNode *this) {
         LLVMAddAttributeAtIndex(func, 1, sret_attr);
     }
 
+    LLVMAttributeRef align_attr = LLVMCreateEnumAttribute(
+        LLVMGetGlobalContext(),
+        LLVMGetEnumAttributeKindForName("alignstack", 10),
+        16
+    );
+
+    LLVMAddAttributeAtIndex(func, LLVMAttributeFunctionIndex, align_attr);
+
     Identifier *fn_ident = gramina_malloc(sizeof *fn_ident);
     *fn_ident = (Identifier) {
         .kind = GRAMINA_IDENT_KIND_FUNC,
@@ -208,6 +218,7 @@ void function_def(CompilerState *S, AstNode *this) {
 
     push_reflection(S, fn_type.return_type);
 
+    LLVMBasicBlockRef alloc = LLVMAppendBasicBlock(func, "alloc");
     LLVMBasicBlockRef body = LLVMAppendBasicBlock(func, "entry");
     LLVMPositionBuilderAtEnd(S->llvm_builder, body);
 
@@ -226,6 +237,9 @@ void function_def(CompilerState *S, AstNode *this) {
             S->error.pos = this->pos;
         }
     }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, alloc);
+    LLVMBuildBr(S->llvm_builder, body);
 
     pop_reflection(S);
 }

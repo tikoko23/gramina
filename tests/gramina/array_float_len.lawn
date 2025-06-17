@@ -1,0 +1,3 @@
+fn Main() {
+    int[23.5f] arr;
+}
