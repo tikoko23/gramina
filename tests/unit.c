@@ -7,6 +7,7 @@
 #include "common/def.h"
 #include "common/log.h"
 #include "common/init.h"
+#include "compiler/compiler.h"
 
 #ifdef GRAMINA_UNIX_BUILD
 #  include <unistd.h>
@@ -73,6 +74,7 @@ int main(int argc, char **argv) {
     switch_to_test_dir();
 
     init();
+    compiler_init();
 
     gramina_global_log_level = GRAMINA_LOG_LEVEL_VERBOSE;
 
@@ -87,6 +89,8 @@ int main(int argc, char **argv) {
         MAKE_TEST(TypeToString),
         MAKE_TEST(SStream),
         MAKE_TEST(Constness),
+        MAKE_TEST(ArrayBadLen),
+        MAKE_TEST(ArrayOk),
     };
 
     size_t n_tests = (sizeof tests) / (sizeof tests[0]);
