@@ -3,11 +3,6 @@ struct Vector2 {
     float y;
 }
 
-fn Thing() {
-    Vector2 v;
-    v.x = 23;
-}
-
 #extern("sqrtf")
 fn Sqrtf(float x) -> float;
 
@@ -39,9 +34,17 @@ fn PrintUlong(ulong n) {
         return;
     }
 
+    byte[32] buf;
+    uint i = 0u;
+
     while n != 0u {
-        Putchar(\$(n % 10u) + '0');
+        buf[i] = \$(n % 10u) + '0';
+        i = i + 1u;
         n = n / 10u;
+    }
+
+    for int j = \$(i - 1u); j >= 0; j = j - 1 {
+        Putchar(buf[j]);
     }
 }
 
@@ -52,10 +55,10 @@ fn PrintFloat(float x) {
         Putchar('-');
     }
 
-    PrintUlong(\$(Absf(x)));
-    Putchar('.');
+    ulong whole = \$(Absf(x));
 
-    long whole = \$(x);
+    PrintUlong(whole);
+    Putchar('.');
     PrintUlong(\$((x - whole) * Powf(10, \$(precision))));
 }
 
@@ -74,17 +77,18 @@ fn BatchLen(const Vector2[8]& vecs) -> float[8] {
 fn Main() {
     Vector2[8] positions;
 
-    positions[0].x = 1;
-    positions[0].y = 1;
+    for uint i = 0u; i < 8u; i = i + 1u {
+        positions[i].x = \$(i);
+        positions[i].y = \$(i);
+    }
 
     float[8] lengths = BatchLen(&positions);
 
     for ulong i = 0u; i < 8u; i = i + 1u {
         float f = lengths[i];
         PrintFloat(f);
+        Putchar('\n');
     }
-
-    PrintFloat(23.0f);
 
     Exit(0);
 }

@@ -84,8 +84,6 @@ CoercionResult coerce_primitives(CompilerState *S, const Value *left, const Valu
         return coerced;
     }
 
-    print_cfmt("({so}, {so}) greater: {so}\n", type_to_str(&left->type), type_to_str(&right->type), type_to_str(&coerced.greater_type));
-
     *result_lhs = try_load(S, left);
     *result_rhs = try_load(S, right);
 

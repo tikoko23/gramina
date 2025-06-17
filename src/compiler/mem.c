@@ -200,11 +200,26 @@ Value assign(CompilerState *S, Value *target, const Value *from) {
 }
 
 LLVMValueRef build_alloca(CompilerState *S, const Type *type, const char *name) {
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(S->llvm_builder);
+    LLVMBasicBlockRef first_block = current_block;
+    while (true) {
+        LLVMBasicBlockRef above = LLVMGetPreviousBasicBlock(first_block);
+        if (!above) {
+            break;
+        }
+
+        first_block = above;
+    }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, first_block);
+
     LLVMValueRef ret = LLVMBuildAlloca(S->llvm_builder, type->llvm, name);
 
     if (type->kind == GRAMINA_TYPE_ARRAY) {
         LLVMSetAlignment(ret, 16);
     }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, current_block);
 
     return ret;
 }

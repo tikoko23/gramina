@@ -1,3 +1,5 @@
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
 #define GRAMINA_NO_NAMESPACE
 
 #include "common/log.h"
@@ -183,6 +185,14 @@ void function_def(CompilerState *S, AstNode *this) {
         LLVMAddAttributeAtIndex(func, 1, sret_attr);
     }
 
+    LLVMAttributeRef align_attr = LLVMCreateEnumAttribute(
+        LLVMGetGlobalContext(),
+        LLVMGetEnumAttributeKindForName("alignstack", 10),
+        16
+    );
+
+    LLVMAddAttributeAtIndex(func, LLVMAttributeFunctionIndex, align_attr);
+
     Identifier *fn_ident = gramina_malloc(sizeof *fn_ident);
     *fn_ident = (Identifier) {
         .kind = GRAMINA_IDENT_KIND_FUNC,
@@ -208,6 +218,7 @@ void function_def(CompilerState *S, AstNode *this) {
 
     push_reflection(S, fn_type.return_type);
 
+    LLVMBasicBlockRef alloc = LLVMAppendBasicBlock(func, "alloc");
     LLVMBasicBlockRef body = LLVMAppendBasicBlock(func, "entry");
     LLVMPositionBuilderAtEnd(S->llvm_builder, body);
 
@@ -226,6 +237,9 @@ void function_def(CompilerState *S, AstNode *this) {
             S->error.pos = this->pos;
         }
     }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, alloc);
+    LLVMBuildBr(S->llvm_builder, body);
 
     pop_reflection(S);
 }
