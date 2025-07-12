@@ -993,6 +993,7 @@ static AstNode *lit_quoted(ParserState *S) {
     case GRAMINA_TOK_LIT_STR_DOUBLE:
         this = mk_ast_node(NULL);
         this->type = GRAMINA_AST_VAL_STRING;
+        this->value.string = str_dup(&cur.contents);
         break;
     default:
         return NULL;

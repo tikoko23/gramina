@@ -83,6 +83,9 @@ void gramina_ast_node_free(AstNode *this) {
 
         array_free(_GraminaSymAttr, &this->value.attributes);
         break;
+    case GRAMINA_AST_VAL_STRING:
+        str_free(&this->value.string);
+        break;
     default:
         break;
     }

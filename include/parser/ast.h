@@ -140,6 +140,8 @@ union gramina_ast_node_value {
 
     bool logical;
 
+    struct gramina_string string;
+
     struct {
         struct gramina_string identifier;
         struct gramina_array(_GraminaSymAttr) attributes;
