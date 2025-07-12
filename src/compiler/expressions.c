@@ -1,3 +1,6 @@
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+
 #define GRAMINA_NO_NAMESPACE
 
 #include "compiler/access.h"
@@ -11,6 +14,29 @@
 #include "compiler/mem.h"
 #include "compiler/stackops.h"
 #include "compiler/struct.h"
+
+static LLVMValueRef mk_llvm_string_literal(CompilerState *S, AstNode *this) {
+    if (this->type != GRAMINA_AST_VAL_STRING) {
+        return NULL;
+    }
+
+    StringView contents = str_as_view(&this->value.string);
+
+    LLVMTypeRef str_type = LLVMArrayType2(LLVMInt8Type(), contents.length + 1);
+    LLVMValueRef string_val = LLVMAddGlobal(S->llvm_module, str_type, "");
+    LLVMSetInitializer(string_val, LLVMConstString(contents.data, contents.length, false));
+    LLVMSetGlobalConstant(string_val, true);
+    LLVMSetLinkage(string_val, LLVMLinkerPrivateLinkage);
+    LLVMSetUnnamedAddress(string_val, LLVMGlobalUnnamedAddr);
+    LLVMSetAlignment(string_val, 1);
+
+    LLVMValueRef idx[] = {
+        LLVMConstInt(LLVMInt64Type(), 0, false),
+        LLVMConstInt(LLVMInt64Type(), 0, false),
+    };
+
+    return LLVMBuildInBoundsGEP2(S->llvm_builder, str_type, string_val, idx, 2, "");
+}
 
 Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
     switch (this->type) {
@@ -77,6 +103,12 @@ Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
             .type = type_from_ast_node(S, this),
             .class = GRAMINA_CLASS_CONSTEXPR,
             .llvm = LLVMConstReal(LLVMDoubleType(), this->value.f64),
+        };
+    case GRAMINA_AST_VAL_STRING:
+        return (Value) {
+            .type = type_from_ast_node(S, this),
+            .class = GRAMINA_CLASS_CONSTEXPR,
+            .llvm = mk_llvm_string_literal(S, this),
         };
     case GRAMINA_AST_OP_ADD:
     case GRAMINA_AST_OP_SUB:

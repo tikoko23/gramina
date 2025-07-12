@@ -80,6 +80,20 @@ Type gramina_mk_pointer_type(const Type *pointed) {
     return typ;
 }
 
+Type gramina_mk_array_type(const Type *element, size_t length) {
+    Type typ = {
+        .kind = GRAMINA_TYPE_ARRAY,
+        .length = length,
+    };
+
+    typ.element_type = gramina_malloc(sizeof *typ.element_type);
+    *typ.element_type = type_dup(element);
+
+    typ.llvm = LLVMArrayType2(element->llvm, length);
+
+    return typ;
+}
+
 static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
     if (this == NULL) {
         return (Type) {
@@ -295,6 +309,15 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
         return type_from_primitive(GRAMINA_PRIMITIVE_LONG);
     case GRAMINA_AST_VAL_U64:
         return type_from_primitive(GRAMINA_PRIMITIVE_ULONG);
+    case GRAMINA_AST_VAL_STRING: {
+        Type elem_type = type_from_primitive(GRAMINA_PRIMITIVE_BYTE);
+        elem_type.is_const = true;
+
+        Type ret = mk_array_type(&elem_type, this->value.string.length + 1);
+
+        type_free(&elem_type);
+        return ret;
+    }
     default:
         break;
     }
