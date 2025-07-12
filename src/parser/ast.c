@@ -31,10 +31,9 @@ AstNode *gramina_mk_ast_node(AstNode *parent) {
         }
     }
 
-    this->parent = parent;
-    this->left = NULL;
-    this->right = NULL;
-    memset(&this->value, 0, (sizeof this->value));
+    *this = (AstNode) {
+        .parent = parent,
+    };
 
     return this;
 }
