@@ -163,9 +163,15 @@ static String ast_node_stringify(const AstNode *this) {
         break;
     case GRAMINA_AST_IDENTIFIER:
     case GRAMINA_AST_FUNCTION_DEF:
-    case GRAMINA_AST_FUNCTION_DECLARATION:
-        str_cat_cfmt(&out, "name: {s}, {sz} attribute(s)", &this->value.identifier, this->value.attributes.length);
+    case GRAMINA_AST_FUNCTION_DECLARATION: {
+        if (this->value.attributes.length != 0) {
+            str_cat_cfmt(&out, "name: {s}, {sz} attribute(s)", &this->value.identifier, this->value.attributes.length);
+        } else {
+            str_cat_cfmt(&out, "name: {s}", &this->value.identifier);
+        }
+
         break;
+    }
     case GRAMINA_AST_TYPE_ARRAY:
         str_cat_cfmt(&out, "length: {sz}", this->value.array_length);
         break;
