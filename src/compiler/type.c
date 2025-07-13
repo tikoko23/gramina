@@ -313,7 +313,7 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
         Type elem_type = type_from_primitive(GRAMINA_PRIMITIVE_BYTE);
         elem_type.is_const = true;
 
-        Type ret = mk_array_type(&elem_type, this->value.string.length + 1);
+        Type ret = mk_array_type(&elem_type, this->value.string.length);
 
         type_free(&elem_type);
         return ret;
