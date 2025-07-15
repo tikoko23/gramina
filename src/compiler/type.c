@@ -222,6 +222,11 @@ static Type _type_from_ast_node(CompilerState *S, const AstNode *this) {
         typ.slice_type = gramina_malloc(sizeof *typ.slice_type);
         *typ.slice_type = type_from_ast_node(S, this->left);
 
+        LLVMTypeRef ptr = LLVMPointerType(typ.slice_type->llvm, 0);
+        LLVMTypeRef idx = type_from_primitive(GRAMINA_PRIMITIVE_UINT).llvm;
+
+        typ.llvm = LLVMStructType((LLVMTypeRef [2]) { ptr, idx }, 2, false);
+
         return typ;
     }
     case GRAMINA_AST_TYPE_ARRAY: {
