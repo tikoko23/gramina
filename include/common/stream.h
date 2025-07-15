@@ -62,7 +62,8 @@ bool gramina_stream_file_is_valid(struct gramina_stream *this);
 
 #endif
 
-#ifdef GRAMINA_NO_NAMESPACE
+#if defined(GRAMINA_NO_NAMESPACE) && !defined(__GRAMINA_STREAM_NN_MACROS)
+#define __GRAMINA_STREAM_NN_MACROS
 
 typedef gramina_stream_reader StreamReader;
 typedef gramina_stream_writer StreamWriter;
@@ -70,7 +71,8 @@ typedef gramina_stream_flusher StreamFlusher;
 typedef gramina_stream_cleaner StreamCleaner;
 
 #endif
-#ifdef GRAMINA_WANT_TAGLESS
+#if defined(GRAMINA_WANT_TAGLESS) && !defined(__GRAMINA_STREAM_TAGLESS_MACROS)
+#define __GRAMINA_STREAM_TAGLESS_MACROS
 
 typedef gramina_stream_reader GraminaStreamReader;
 typedef gramina_stream_writer GraminaStreamWriter;

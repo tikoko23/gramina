@@ -247,8 +247,6 @@ static AstNode *function_def(ParserState *S) {
 
     CONSUME(S);
 
-    // TODO: parse attribs
-
     AstNode *return_type = NULL;
     if (CURRENT(S).type == GRAMINA_TOK_MINUS) {
         CONSUME(S);

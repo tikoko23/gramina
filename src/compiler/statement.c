@@ -95,7 +95,7 @@ void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
     ++S->reflection_depth;
     size_t reflection_index = S->reflection.length - 1;
 
-    if (REFLECT(reflection_index)->type.kind == GRAMINA_TYPE_VOID) {
+    if (REFLECT(S, reflection_index)->type.kind == GRAMINA_TYPE_VOID) {
         if (this->left) {
             putcs_err(S, "return statement cannot have expression in function of type 'void'");
             S->error.pos = this->left->pos;
@@ -112,20 +112,20 @@ void return_statement(CompilerState *S, LLVMValueRef function, AstNode *this) {
         return;
     }
 
-    if (!type_can_convert(S, &exp.type, &REFLECT(reflection_index)->type)) {
-        err_implicit_conv(S, &exp.type, &REFLECT(reflection_index)->type);
+    if (!type_can_convert(S, &exp.type, &REFLECT(S, reflection_index)->type)) {
+        err_implicit_conv(S, &exp.type, &REFLECT(S, reflection_index)->type);
         S->error.pos = this->left->pos;
         value_free(&exp);
         return;
     }
 
-    if (!type_is_same(&exp.type, &REFLECT(reflection_index)->type)) {
-        Value ret = convert(S, &exp, &REFLECT(reflection_index)->type);
+    if (!type_is_same(&exp.type, &REFLECT(S, reflection_index)->type)) {
+        Value ret = convert(S, &exp, &REFLECT(S, reflection_index)->type);
         value_free(&exp);
         exp = ret;
     }
 
-    Type *ret_type = &REFLECT(reflection_index)->type;
+    Type *ret_type = &REFLECT(S, reflection_index)->type;
     try_load_inplace(S, &exp);
     convert_inplace(S, &exp, ret_type);
 

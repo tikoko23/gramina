@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from contextlib import suppress
 import re
 import os
 from os import path
@@ -32,6 +33,14 @@ def handle_type_match(m: re.Match) -> Tuple[str, str]:
 def process_header(filename: str) -> None:
     bare_name: str = filename.removeprefix(INCLUDE_DIR)
     gen_file = path.join(path.join(INCLUDE_DIR, GENERATED_SUBDIR), bare_name)
+
+    # We don't care about modification time if the file doesn't exist
+    with suppress(FileNotFoundError):
+        last_change = path.getmtime(filename)
+        last_gen = path.getmtime(gen_file)
+
+        if last_gen >= last_change:
+            return
 
     no_namespace_lines: List[str] = []
     want_tagless_lines: List[str] = []
@@ -117,7 +126,6 @@ def find_headers(dirname: str) -> List[str]:
 
 def main() -> None:
     os.system(f"rm -rf include_backup")
-    os.system(f"rm -rf {path.join(INCLUDE_DIR, GENERATED_SUBDIR)}")
     os.system(f"cp -r include include_backup/")
 
     headers = find_headers(INCLUDE_DIR)

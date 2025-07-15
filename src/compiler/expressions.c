@@ -143,7 +143,7 @@ Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
     case GRAMINA_AST_OP_LOGICAL_OR:
     case GRAMINA_AST_OP_LOGICAL_XOR:
     case GRAMINA_AST_OP_LOGICAL_AND:
-        return binary_logic_expr(S, function, this);
+        return binary_skipped_logic_expr(S, function, this);
     case GRAMINA_AST_OP_CALL:
         if (this->left->type == GRAMINA_AST_IDENTIFIER) {
             return fn_call_expr(S, function, this);
@@ -276,18 +276,91 @@ Value unary_arithmetic_expr(CompilerState *S, LLVMValueRef function, AstNode *th
     return ret;
 }
 
-Value binary_logic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+Value binary_skipped_logic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    if (get_op_from_ast_node(this) == GRAMINA_OP_L_XOR) {
+        Value lhs = expression(S, function, this->left);
+        Value rhs = expression(S, function, this->right);
+
+        Value ret = binary_logic(S, &lhs, &rhs, GRAMINA_OP_L_XOR);
+
+        value_free(&lhs);
+        value_free(&rhs);
+
+        if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
+            S->error.pos = this->pos;
+        }
+
+        return ret;
+    }
+
+    Type bool_type = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
+
     Value lhs = expression(S, function, this->left);
+
+    if (!type_can_convert(S, &lhs.type, &bool_type)) {
+        err_implicit_conv(S, &lhs.type, &bool_type);
+
+        type_free(&bool_type);
+        value_free(&lhs);
+
+        return invalid_value();
+    }
+
+    LLVMBasicBlockRef split = LLVMAppendBasicBlock(function, "split");
+    LLVMBasicBlockRef merge = LLVMAppendBasicBlock(function, "lmerge");
+    LLVMBasicBlockRef prev = LLVMGetPreviousBasicBlock(split);
+
+    switch (get_op_from_ast_node(this)) {
+    case GRAMINA_OP_L_OR:
+        LLVMBuildCondBr(S->llvm_builder, lhs.llvm, merge, split);
+        break;
+    case GRAMINA_OP_L_AND: {
+        LLVMValueRef not = LLVMBuildNot(S->llvm_builder, lhs.llvm, "");
+        LLVMBuildCondBr(S->llvm_builder, not, merge, split);
+        break;
+    }
+    }
+
+    LLVMPositionBuilderAtEnd(S->llvm_builder, split);
+
     Value rhs = expression(S, function, this->right);
 
-    Value ret = binary_logic(S, &lhs, &rhs, get_op_from_ast_node(this));
+    if (!type_can_convert(S, &rhs.type, &bool_type)) {
+        err_implicit_conv(S, &rhs.type, &bool_type);
+
+        type_free(&bool_type);
+        value_free(&lhs);
+        value_free(&rhs);
+
+        return invalid_value();
+    }
+
+    LLVMBuildBr(S->llvm_builder, merge);
+    LLVMPositionBuilderAtEnd(S->llvm_builder, merge);
+
+    LLVMValueRef phi = LLVMBuildPhi(S->llvm_builder, LLVMInt1Type(), "");
+
+    switch (get_op_from_ast_node(this)) {
+    case GRAMINA_OP_L_OR: {
+        LLVMValueRef _true = LLVMConstInt(LLVMInt1Type(), 1, false);
+        LLVMAddIncoming(phi, (LLVMValueRef [2]) { _true, rhs.llvm }, (LLVMBasicBlockRef [2]) { prev, split }, 2);
+        break;
+    }
+    case GRAMINA_OP_L_AND: {
+        LLVMValueRef _false = LLVMConstInt(LLVMInt1Type(), 0, false);
+        LLVMAddIncoming(phi, (LLVMValueRef [2]) { _false, rhs.llvm }, (LLVMBasicBlockRef [2]) { prev, split }, 2);
+        break;
+    }
+    }
+
+    Value ret = {
+        .llvm = phi,
+        .type = bool_type,
+        .class = GRAMINA_CLASS_RVALUE,
+    };
 
     value_free(&lhs);
     value_free(&rhs);
-
-    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
-        S->error.pos = this->pos;
-    }
 
     return ret;
 }

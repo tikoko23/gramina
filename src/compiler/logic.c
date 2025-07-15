@@ -167,7 +167,7 @@ Value binary_logic(CompilerState *S, const Value *_lhs, const Value *_rhs, Logic
     Type bool_type = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
 
     if (!type_can_convert(S, &lhs.type, &bool_type)) {
-        err_explicit_conv(S, &lhs.type, &bool_type);
+        err_implicit_conv(S, &lhs.type, &bool_type);
 
         type_free(&bool_type);
         value_free(&lhs);
@@ -177,7 +177,7 @@ Value binary_logic(CompilerState *S, const Value *_lhs, const Value *_rhs, Logic
     }
 
     if (!type_can_convert(S, &rhs.type, &bool_type)) {
-        err_explicit_conv(S, &rhs.type, &bool_type);
+        err_implicit_conv(S, &rhs.type, &bool_type);
 
         type_free(&bool_type);
         value_free(&lhs);
