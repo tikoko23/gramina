@@ -19,7 +19,7 @@ struct gramina_value gramina_deref_expr(struct gramina_compiler_state *S, LLVMVa
 
 struct gramina_value gramina_comparison_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
-struct gramina_value gramina_binary_logic_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
+struct gramina_value gramina_binary_skipped_logic_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
 struct gramina_value gramina_fn_call_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 
