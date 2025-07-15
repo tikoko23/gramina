@@ -61,6 +61,7 @@ bool gramina_kind_is_aggregate(TypeKind k) {
     switch (k) {
     case GRAMINA_TYPE_STRUCT:
     case GRAMINA_TYPE_ARRAY:
+    case GRAMINA_TYPE_SLICE:
         return true;
     default:
         return false;
