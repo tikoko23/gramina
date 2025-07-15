@@ -1120,15 +1120,18 @@ static AstNode *typename(ParserState *S) {
         case GRAMINA_TOK_KW_CONST:
             const_next = true;
             CONSUME(S);
-            break;;
+            break;
         case GRAMINA_TOK_AMPERSAND:
-            cur = mk_ast_node_lr(NULL, cur, NULL);
-            cur->type = GRAMINA_AST_TYPE_POINTER;
-            cur->pos = CURRENT(S).pos;
+        case GRAMINA_TOK_AND:
+            for (size_t i = 0; i < (CURRENT(S).type == GRAMINA_TOK_AND ? 2 : 1); ++i) {
+                cur = mk_ast_node_lr(NULL, cur, NULL);
+                cur->type = GRAMINA_AST_TYPE_POINTER;
+                cur->pos = CURRENT(S).pos;
 
-            if (const_next) {
-                cur->flags |= GRAMINA_AST_CONST_TYPE;
-                const_next = false;
+                if (const_next) {
+                    cur->flags |= GRAMINA_AST_CONST_TYPE;
+                    const_next = false;
+                }
             }
 
             CONSUME(S);
