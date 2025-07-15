@@ -170,7 +170,7 @@ Value arithmetic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     value_free(&left);
     value_free(&right);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -190,7 +190,7 @@ Value cast_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     value_free(&from);
     type_free(&to);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -203,7 +203,7 @@ Value address_of_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
 
     value_free(&operand);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -227,7 +227,7 @@ Value assign_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     value_free(&value);
     value_free(&target);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -241,7 +241,7 @@ Value deref_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
 
     value_free(&operand);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -256,7 +256,7 @@ Value comparison_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     value_free(&left);
     value_free(&right);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -269,7 +269,7 @@ Value unary_arithmetic_expr(CompilerState *S, LLVMValueRef function, AstNode *th
 
     value_free(&operand);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -285,7 +285,7 @@ Value binary_logic_expr(CompilerState *S, LLVMValueRef function, AstNode *this) 
     value_free(&lhs);
     value_free(&rhs);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -414,7 +414,7 @@ Value member_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
 
     value_free(&lhs);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
@@ -429,7 +429,7 @@ Value subscript_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
     value_free(&scriptee);
     value_free(&scripter);
 
-    if (!value_is_valid(&ret)) {
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
     }
 
