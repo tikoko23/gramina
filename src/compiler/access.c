@@ -16,7 +16,7 @@ Value subscript(CompilerState *S, const Value *_scriptee, const Value *_scripter
     // TODO: operator overloading
 
     switch (scriptee.type.kind) {
-    case GRAMINA_TYPE_ARRAY:
+    case GRAMINA_TYPE_ARRAY: {
         if (scripter.type.kind != GRAMINA_TYPE_PRIMITIVE
          || !primitive_is_integral(scripter.type.primitive)) {
             StringView op = mk_sv_c("subscript");
@@ -51,8 +51,11 @@ Value subscript(CompilerState *S, const Value *_scriptee, const Value *_scripter
         value_free(&scripter);
 
         return ret;
-    case GRAMINA_TYPE_POINTER:
-        if (scriptee.type.pointer_type->kind == GRAMINA_TYPE_VOID) {
+    }
+    case GRAMINA_TYPE_POINTER: {
+        if (scriptee.type.pointer_type->kind == GRAMINA_TYPE_VOID
+         || scripter.type.kind != GRAMINA_TYPE_PRIMITIVE
+         || !primitive_is_integral(scripter.type.primitive)) {
             StringView op = mk_sv_c("subscript");
             err_illegal_op(S, &scriptee.type, &scripter.type, &op);
             value_free(&scriptee);
@@ -60,7 +63,49 @@ Value subscript(CompilerState *S, const Value *_scriptee, const Value *_scripter
             break;
         }
 
-        break;
+        LLVMValueRef result = LLVMBuildGEP2(
+            S->llvm_builder,
+            scriptee.type.pointer_type->llvm,
+            scriptee.llvm,
+            &scripter.llvm,
+            1, ""
+        );
+
+        LLVMValueRef loaded = kind_is_aggregate(scriptee.type.element_type->kind)
+                            ? result
+                            : LLVMBuildLoad2(S->llvm_builder, scriptee.type.element_type->llvm, result, "");
+
+        Value ret = {
+            .lvalue_ptr = result,
+            .llvm = loaded,
+            .class = GRAMINA_CLASS_LVALUE,
+            .type = type_dup(scriptee.type.pointer_type),
+        };
+
+        value_free(&scriptee);
+        value_free(&scripter);
+
+        return ret;
+    }
+    case GRAMINA_TYPE_SLICE: {
+        if (scriptee.type.slice_type->kind == GRAMINA_TYPE_VOID) {
+            StringView op = mk_sv_c("subscript");
+            err_illegal_op(S, &scriptee.type, &scripter.type, &op);
+            value_free(&scriptee);
+            value_free(&scripter);
+            break;
+        }
+
+        StringView prop = mk_sv_c("ptr");
+        Value ptr = get_property(S, &scriptee, &prop);
+        Value ret = subscript(S, &ptr, &scripter);
+
+        value_free(&ptr);
+        value_free(&scriptee);
+        value_free(&scripter);
+
+        return ret;
+    }
     default: {
         StringView op = mk_sv_c("subscript");
         err_illegal_op(S, &scriptee.type, &scripter.type, &op);
