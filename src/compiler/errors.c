@@ -109,7 +109,7 @@ void err_no_field(CompilerState *S, const Type *type, const StringView *field) {
 }
 
 void err_no_getprop(CompilerState *S, const Type *type, const StringView *prop) {
-    puts_err(S, str_cfmt("type '{so}' does not have gettable property '{sv}'", type_to_str(type), prop));
+    puts_err(S, str_cfmt("type '{so}' does not have get-able property '{sv}'", type_to_str(type), prop));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
