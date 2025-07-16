@@ -1,6 +1,8 @@
 #ifndef __GRAMINA_COMPILER_DECL_H
 #define __GRAMINA_COMPILER_DECL_H
 
+#include <stdint.h>
+
 #include <llvm-c/Types.h>
 
 #include "compiler/type.h"
@@ -23,10 +25,29 @@ struct gramina_value {
     struct gramina_type type;
 };
 
+union gramina_primitive_initialiser {
+    bool boolean;
+
+    int8_t i8;
+    int16_t i16;
+    int32_t i32;
+    int64_t i64;
+
+    uint8_t u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
+
+    float f32;
+    double f64;
+};
+
 bool gramina_value_is_valid(const struct gramina_value *this);
 void gramina_value_free(struct gramina_value *this);
 struct gramina_value gramina_value_dup(const struct gramina_value *this);
 struct gramina_value gramina_invalid_value();
+
+struct gramina_value gramina_mk_primitive_value(enum gramina_primitive primitive, union gramina_primitive_initialiser val);
 
 #endif
 #include "gen/compiler/value.h"
