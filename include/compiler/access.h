@@ -8,5 +8,7 @@ struct gramina_value gramina_subscript(struct gramina_compiler_state *S, const s
 
 struct gramina_value gramina_member(struct gramina_compiler_state *S, const struct gramina_value *operand, const struct gramina_string_view *field_name);
 
+struct gramina_value gramina_get_property(struct gramina_compiler_state *S, const struct gramina_value *object, const struct gramina_string_view *prop_name);
+
 #endif
 #include "gen/compiler/access.h"

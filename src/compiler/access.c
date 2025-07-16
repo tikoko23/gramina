@@ -6,6 +6,8 @@
 #include "compiler/access.h"
 #include "compiler/errors.h"
 #include "compiler/mem.h"
+#include "compiler/typedecl.h"
+#include "compiler/value.h"
 
 Value subscript(CompilerState *S, const Value *_scriptee, const Value *_scripter) {
     Value scriptee = try_load(S, _scriptee);
@@ -128,4 +130,63 @@ Value member(CompilerState *S, const Value *operand, const StringView *field_nam
 
     value_free(&lhs);
     return ret;
+}
+
+Value gramina_get_property(CompilerState *S, const Value *object, const StringView *prop_name) {
+    Value lhs = try_load(S, object);
+
+    switch (lhs.type.kind) {
+    case GRAMINA_TYPE_SLICE:
+        if (sv_cmp_c(prop_name, "length") == 0) {
+            Value ret = {
+                .llvm = LLVMBuildInBoundsGEP2(
+                    S->llvm_builder,
+                    lhs.type.llvm,
+                    lhs.llvm,
+                    (LLVMValueRef [2]) {
+                        LLVMConstInt(LLVMInt32Type(), 0, false),
+                        LLVMConstInt(LLVMInt32Type(), 1, false),
+                    }, 2, ""
+                ),
+                .type = type_from_primitive(GRAMINA_PRIMITIVE_UINT),
+                .class = GRAMINA_CLASS_RVALUE,
+            };
+
+            value_free(&lhs);
+            ret.llvm = LLVMBuildLoad2(S->llvm_builder, ret.type.llvm, ret.llvm, "");
+            return ret;
+        } else if (sv_cmp_c(prop_name, "ptr") == 0) {
+            Value ret = {
+                .llvm = LLVMBuildInBoundsGEP2(
+                    S->llvm_builder,
+                    lhs.type.llvm,
+                    lhs.llvm,
+                    (LLVMValueRef [2]) {
+                        LLVMConstInt(LLVMInt32Type(), 0, false),
+                        LLVMConstInt(LLVMInt32Type(), 0, false),
+                    }, 2, ""
+                ),
+                .type = mk_pointer_type(lhs.type.slice_type),
+                .class = GRAMINA_CLASS_RVALUE,
+            };
+
+            value_free(&lhs);
+            ret.llvm = LLVMBuildLoad2(S->llvm_builder, ret.type.llvm, ret.llvm, "");
+            return ret;
+        } else {
+            err_no_getprop(S, &object->type, prop_name);
+
+            value_free(&lhs);
+            return invalid_value();
+        }
+
+        break;
+    default:
+        err_cannot_have_prop(S, &object->type);
+
+        value_free(&lhs);
+        return invalid_value();
+    }
+
+    return invalid_value();
 }

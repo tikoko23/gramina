@@ -154,6 +154,8 @@ Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
         return member_expr(S, function, this);
     case GRAMINA_AST_OP_SUBSCRIPT:
         return subscript_expr(S, function, this);
+    case GRAMINA_AST_OP_PROPERTY:
+        return get_property_expr(S, function, this);
     default:
         err_illegal_node(S, this->type);
         S->error.pos = this->pos;
@@ -501,6 +503,21 @@ Value subscript_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
 
     value_free(&scriptee);
     value_free(&scripter);
+
+    if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
+        S->error.pos = this->pos;
+    }
+
+    return ret;
+}
+
+Value get_property_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Value lhs = expression(S, function, this->left);
+    StringView rhs = str_as_view(&this->right->value.identifier);
+
+    Value ret = get_property(S, &lhs, &rhs);
+
+    value_free(&lhs);
 
     if (!value_is_valid(&ret) && S->error.pos.depth == 0) {
         S->error.pos = this->pos;
