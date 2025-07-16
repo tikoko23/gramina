@@ -9,12 +9,14 @@
 #include "compiler/typedecl.h"
 #include "compiler/value.h"
 
-Value primitive_convert(CompilerState *S, const Value *from, const Type *to) {
-    Primitive p_from = from->type.primitive;
+Value primitive_convert(CompilerState *S, const Value *_from, const Type *to) {
+    Primitive p_from = _from->type.primitive;
     Primitive p_to = to->primitive;
 
+    Value from = try_load(S, _from);
+
     if (p_from == p_to) {
-        return value_dup(from);
+        return from;
     }
 
     LLVMOpcode cast;
@@ -41,15 +43,19 @@ Value primitive_convert(CompilerState *S, const Value *from, const Type *to) {
              : LLVMFPToSI;
     }
 
-    LLVMValueRef ref = LLVMBuildCast(S->llvm_builder, cast, from->llvm, to->llvm, "");
+    LLVMValueRef ref = LLVMBuildCast(S->llvm_builder, cast, from.llvm, to->llvm, "");
 
-    return (Value) {
+    Value ret = {
         .llvm = ref,
         .type = type_dup(to),
-        .class = from->class == GRAMINA_CLASS_CONSTEXPR
+        .class = from.class == GRAMINA_CLASS_CONSTEXPR
                ? GRAMINA_CLASS_CONSTEXPR
                : GRAMINA_CLASS_RVALUE
     };
+
+    value_free(&from);
+
+    return ret;
 }
 
 Value array_to_slice(CompilerState *S, const Value *from, const Type *slice_elem_type) {
@@ -96,11 +102,11 @@ Value array_to_slice(CompilerState *S, const Value *from, const Type *slice_elem
         from->llvm,
         (LLVMValueRef [2]) {
             LLVMConstInt(LLVMInt32Type(), 0, false),
-            LLVMConstInt(LLVMInt32Type(), 1, false),
+            LLVMConstInt(LLVMInt32Type(), 0, false),
         }, 2, ""
     );
 
-    LLVMBuildStore(S->llvm_builder, ptr_val, ptr);
+    LLVMBuildStore(S->llvm_builder, ptr, ptr_val);
 
     return (Value) {
         .llvm = slice_val,
