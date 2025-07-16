@@ -7,6 +7,7 @@ bool gramina_kind_is_aggregate(enum gramina_type_kind k);
 
 struct gramina_type gramina_mk_pointer_type(const struct gramina_type *pointed);
 struct gramina_type gramina_mk_array_type(const struct gramina_type *element, size_t length);
+struct gramina_type gramina_mk_slice_type(const struct gramina_type *element);
 
 struct gramina_type gramina_type_from_primitive(enum gramina_primitive this);
 struct gramina_type gramina_type_from_ast_node(struct gramina_compiler_state *S, const struct gramina_ast_node *node);
