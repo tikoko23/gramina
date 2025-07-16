@@ -27,6 +27,7 @@ static int init_state(CompilerState *S) {
     const char *module_name = "base"; // WIP
     S->llvm_module = LLVMModuleCreateWithName(module_name);
     S->llvm_builder = LLVMCreateBuilder();
+    S->llvm_target_data = LLVMCreateTargetDataLayout(S->llvm_target_machine);
 
     char *triple = LLVMGetDefaultTargetTriple(); // WIP
     LLVMSetTarget(S->llvm_module, triple);
@@ -37,6 +38,7 @@ static int init_state(CompilerState *S) {
 
 static int deinit_state(CompilerState *S) {
     LLVMDisposeBuilder(S->llvm_builder);
+    LLVMDisposeTargetData(S->llvm_target_data);
 
     return 0;
 }
