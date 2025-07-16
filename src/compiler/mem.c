@@ -31,6 +31,14 @@ void store(CompilerState *S, const Value *value, LLVMValueRef into) {
 
         break;
     }
+    case GRAMINA_TYPE_SLICE:
+        LLVMBuildMemCpy(
+            S->llvm_builder,
+            into, LLVMABIAlignmentOfType(S->llvm_target_data, value->type.llvm),
+            value->llvm, LLVMABIAlignmentOfType(S->llvm_target_data, value->type.llvm),
+            LLVMSizeOf(value->type.llvm)
+        );
+        break;
     default:
         LLVMBuildStore(S->llvm_builder, value->llvm, into);
         break;
