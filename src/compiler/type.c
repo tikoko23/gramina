@@ -552,6 +552,12 @@ bool gramina_type_can_convert(const CompilerState *S, const Type *from, const Ty
         return primitive_can_convert(from->primitive, to->primitive);
     }
 
+    if (from->kind == GRAMINA_TYPE_ARRAY && to->kind == GRAMINA_TYPE_SLICE
+     && !(from->element_type->is_const && !to->slice_type->is_const)
+     && type_is_same(from->element_type, to->slice_type)) {
+        return true;
+    }
+
     return false;
 }
 

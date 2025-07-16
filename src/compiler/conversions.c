@@ -1,8 +1,13 @@
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+
 #define GRAMINA_NO_NAMESPACE
 
 #include "compiler/conversions.h"
 #include "compiler/errors.h"
 #include "compiler/mem.h"
+#include "compiler/typedecl.h"
+#include "compiler/value.h"
 
 Value primitive_convert(CompilerState *S, const Value *from, const Type *to) {
     Primitive p_from = from->type.primitive;
@@ -47,6 +52,63 @@ Value primitive_convert(CompilerState *S, const Value *from, const Type *to) {
     };
 }
 
+Value array_to_slice(CompilerState *S, const Value *from, const Type *slice_elem_type) {
+    if (from->type.kind != GRAMINA_TYPE_ARRAY
+     || !type_is_same(from->type.element_type, slice_elem_type)) {
+        err_explicit_conv(S, &from->type, slice_elem_type);
+        return invalid_value();
+    }
+
+    Type slice_type = mk_slice_type(slice_elem_type);
+
+    LLVMValueRef slice_val = build_alloca(S, &slice_type, "tsl");
+    LLVMValueRef ptr_val = LLVMBuildInBoundsGEP2(
+        S->llvm_builder,
+        slice_type.llvm,
+        slice_val,
+        (LLVMValueRef [2]) {
+            LLVMConstInt(LLVMInt32Type(), 0, false),
+            LLVMConstInt(LLVMInt32Type(), 0, false),
+        }, 2, ""
+    );
+
+    LLVMValueRef len_val = LLVMBuildInBoundsGEP2(
+        S->llvm_builder,
+        slice_type.llvm,
+        slice_val,
+        (LLVMValueRef [2]) {
+            LLVMConstInt(LLVMInt32Type(), 0, false),
+            LLVMConstInt(LLVMInt32Type(), 1, false),
+        }, 2, ""
+    );
+
+    Value length = mk_primitive_value(
+        GRAMINA_PRIMITIVE_UINT,
+        (PrimitiveInitialiser) { .u32 = from->type.length }
+    );
+
+    store(S, &length, len_val);
+    value_free(&length);
+
+    LLVMValueRef ptr = LLVMBuildInBoundsGEP2(
+        S->llvm_builder,
+        from->type.llvm,
+        from->llvm,
+        (LLVMValueRef [2]) {
+            LLVMConstInt(LLVMInt32Type(), 0, false),
+            LLVMConstInt(LLVMInt32Type(), 1, false),
+        }, 2, ""
+    );
+
+    LLVMBuildStore(S->llvm_builder, ptr_val, ptr);
+
+    return (Value) {
+        .llvm = slice_val,
+        .class = GRAMINA_CLASS_RVALUE,
+        .type = slice_type,
+    };
+}
+
 bool convert_inplace(CompilerState *S, Value *value, const Type *to) {
     if (type_is_same(&value->type, to)) {
         return true;
@@ -60,14 +122,32 @@ bool convert_inplace(CompilerState *S, Value *value, const Type *to) {
         return true;
     }
 
+    if (value->type.kind == GRAMINA_TYPE_ARRAY && to->kind == GRAMINA_TYPE_SLICE) {
+        Value new_value = array_to_slice(S, value, to->slice_type);
+        value_free(value);
+
+        *value = new_value;
+        return value_is_valid(value); 
+    }
+
     value_free(value);
     *value = invalid_value();
     return false;
 }
 
 Value convert(CompilerState *S, const Value *from, const Type *to) {
+    if (type_is_same(&from->type, to)) {
+        Value v = *from;
+        v.type = type_dup(&from->type);
+        return v;
+    }
+
     if (from->type.kind == GRAMINA_TYPE_PRIMITIVE && to->kind == GRAMINA_TYPE_PRIMITIVE) {
         return primitive_convert(S, from, to);
+    }
+
+    if (from->type.kind == GRAMINA_TYPE_ARRAY && to->kind == GRAMINA_TYPE_SLICE) {
+        return array_to_slice(S, from, to->slice_type);
     }
 
     return invalid_value();
