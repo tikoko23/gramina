@@ -94,12 +94,22 @@ void err_cannot_have_member(CompilerState *S, const Type *type) {
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 
+void err_cannot_have_prop(CompilerState *S, const Type *type) {
+    puts_err(S, str_cfmt("value of type '{so}' cannot have property", type_to_str(type)));
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
 void err_no_field(CompilerState *S, const Type *type, const StringView *field) {
     const Type *indexed = type->kind == GRAMINA_TYPE_POINTER
                         ? type->pointer_type
                         : type;
 
     puts_err(S, str_cfmt("type '{so}' does not have '{sv}' field", type_to_str(indexed), field));
+    S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
+}
+
+void err_no_getprop(CompilerState *S, const Type *type, const StringView *prop) {
+    puts_err(S, str_cfmt("type '{so}' does not have gettable property '{sv}'", type_to_str(type), prop));
     S->status = GRAMINA_COMPILE_ERR_INCOMPATIBLE_TYPE;
 }
 

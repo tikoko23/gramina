@@ -19,7 +19,9 @@ void gramina_err_illegal_op(struct gramina_compiler_state *S, const struct grami
 void gramina_err_missing_ret(struct gramina_compiler_state *S, const struct gramina_type *ret);
 void gramina_err_cannot_call(struct gramina_compiler_state *S, const struct gramina_type *type);
 void gramina_err_cannot_have_member(struct gramina_compiler_state *S, const struct gramina_type *type);
+void gramina_err_cannot_have_prop(struct gramina_compiler_state *S, const struct gramina_type *type);
 void gramina_err_no_field(struct gramina_compiler_state *S, const struct gramina_type *type, const struct gramina_string_view *field);
+void gramina_err_no_getprop(struct gramina_compiler_state *S, const struct gramina_type *type, const struct gramina_string_view *prop);
 void gramina_err_insufficient_args(struct gramina_compiler_state *S, size_t wants, size_t got);
 void gramina_err_excess_args(struct gramina_compiler_state *S, size_t wants);
 void gramina_err_no_attrib_arg(struct gramina_compiler_state *S, const struct gramina_string_view *attrib_name);
