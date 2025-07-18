@@ -9,3 +9,4 @@ TEST(SStream);
 TEST(Constness);
 TEST(ArrayBadLen);
 TEST(ArrayOk);
+TEST(Pipe);

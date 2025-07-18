@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
         MAKE_TEST(Constness),
         MAKE_TEST(ArrayBadLen),
         MAKE_TEST(ArrayOk),
+        MAKE_TEST(Pipe),
     };
 
     size_t n_tests = (sizeof tests) / (sizeof tests[0]);
