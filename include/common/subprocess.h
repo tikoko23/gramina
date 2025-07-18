@@ -19,6 +19,8 @@ struct gramina_subprocess {
 
 #ifdef GRAMINA_UNIX_BUILD 
     pid_t handle;
+    int pipe_in[2];
+    int pipe_out[2];
 #endif
 
     int exit_code;
@@ -34,6 +36,8 @@ int gramina_sbp_run_sync(struct gramina_subprocess *this);
 int gramina_sbp_wait(struct gramina_subprocess *this);
 
 long gramina_sbp_pid(const struct gramina_subprocess *this);
+
+struct gramina_stream gramina_sbp_stream(struct gramina_subprocess *this);
 
 void gramina_sbp_free(struct gramina_subprocess *this);
 
