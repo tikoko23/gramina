@@ -25,9 +25,7 @@ TEST(Pipe) {
 
     StringView buf_view = mk_sv_buf(buf, sizeof buf);
 
-    if (status
-     || read != sizeof buf
-     || sv_cmp(&payload, &buf_view) != 0) {
+    if (status || read != sizeof buf || sv_cmp(&payload, &buf_view) != 0) {
         stream_free(&stream);
         sbp_free(&sbp);
         test_fail();
