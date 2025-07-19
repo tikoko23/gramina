@@ -11,37 +11,11 @@
 #include "compiler/op.h"
 
 void store(CompilerState *S, const Value *value, LLVMValueRef into) {
-    switch (value->type.kind) {
-    case GRAMINA_TYPE_STRUCT:
-        LLVMBuildMemCpy(
-            S->llvm_builder,
-            into, 8,
-            value->llvm, 8,
-            LLVMSizeOf(value->type.llvm)
-        );
-        break;
-    case GRAMINA_TYPE_ARRAY: {
-        size_t align = 16; // This will be adjusted properly after a simple design change 
-        LLVMBuildMemCpy(
-            S->llvm_builder,
-            into, align,
-            value->llvm, align,
-            LLVMSizeOf(value->type.llvm)
-        );
-
-        break;
-    }
-    case GRAMINA_TYPE_SLICE:
-        LLVMBuildMemCpy(
-            S->llvm_builder,
-            into, LLVMABIAlignmentOfType(S->llvm_target_data, value->type.llvm),
-            value->llvm, LLVMABIAlignmentOfType(S->llvm_target_data, value->type.llvm),
-            LLVMSizeOf(value->type.llvm)
-        );
-        break;
-    default:
+    size_t align = LLVMABIAlignmentOfType(S->llvm_target_data, value->type.llvm);
+    if (kind_is_aggregate(value->type.kind)) {
+        LLVMBuildMemCpy(S->llvm_builder, into, align, value->llvm, align, LLVMSizeOf(value->type.llvm));
+    } else {
         LLVMBuildStore(S->llvm_builder, value->llvm, into);
-        break;
     }
 }
 
