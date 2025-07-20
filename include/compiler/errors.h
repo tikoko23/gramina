@@ -27,6 +27,7 @@ void gramina_err_excess_args(struct gramina_compiler_state *S, size_t wants);
 void gramina_err_no_attrib_arg(struct gramina_compiler_state *S, const struct gramina_string_view *attrib_name);
 void gramina_err_const_assign(struct gramina_compiler_state *S, const struct gramina_type *type);
 void gramina_err_discard_const(struct gramina_compiler_state *S, const struct gramina_type *from, const struct gramina_type *to);
+void gramina_err_bad_type(struct gramina_compiler_state *S, const struct gramina_type *type);
 
 #endif
 #include "gen/compiler/errors.h"
