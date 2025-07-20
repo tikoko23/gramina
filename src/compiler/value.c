@@ -60,7 +60,7 @@ Value mk_primitive_value(Primitive primitive, PrimitiveInitialiser val) {
         const_val = LLVMConstInt(LLVMInt64Type(), val.i64, true);
         break;
     case GRAMINA_PRIMITIVE_ULONG:
-        const_val = LLVMConstInt(LLVMInt1Type(), val.u64, false);
+        const_val = LLVMConstInt(LLVMInt64Type(), val.u64, false);
         break;
     case GRAMINA_PRIMITIVE_FLOAT:
         const_val = LLVMConstReal(LLVMFloatType(), val.f32);
