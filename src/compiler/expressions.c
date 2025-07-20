@@ -14,6 +14,7 @@
 #include "compiler/mem.h"
 #include "compiler/stackops.h"
 #include "compiler/struct.h"
+#include "compiler/type.h"
 
 static LLVMValueRef mk_llvm_string_literal(CompilerState *S, AstNode *this) {
     if (this->type != GRAMINA_AST_VAL_STRING) {
@@ -116,6 +117,10 @@ Value expression(CompilerState *S, LLVMValueRef function, AstNode *this) {
     case GRAMINA_AST_OP_DIV:
     case GRAMINA_AST_OP_REM:
         return arithmetic_expr(S, function, this);
+    case GRAMINA_AST_OP_SIZEOF:
+        return size_of_expr(S, function, this);
+    case GRAMINA_AST_OP_ALIGNOF:
+        return align_of_expr(S, function, this);
     case GRAMINA_AST_OP_CAST:
         return cast_expr(S, function, this);
     case GRAMINA_AST_OP_ADDRESS_OF:
@@ -523,5 +528,35 @@ Value get_property_expr(CompilerState *S, LLVMValueRef function, AstNode *this) 
         S->error.pos = this->pos;
     }
 
+    return ret;
+}
+
+Value size_of_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Type typ = type_from_ast_node(S, this->left);
+    if (typ.kind == GRAMINA_TYPE_INVALID) {
+        err_bad_type(S, &typ);
+        S->error.pos = this->pos;
+        return invalid_value();
+    }
+
+    size_t sz = size_of(S, &typ);
+    Value ret = mk_primitive_value(GRAMINA_PRIMITIVE_ULONG, (PrimitiveInitialiser) { .u64 = sz });
+
+    type_free(&typ);
+    return ret;
+}
+
+Value align_of_expr(CompilerState *S, LLVMValueRef function, AstNode *this) {
+    Type typ = type_from_ast_node(S, this->left);
+    if (typ.kind == GRAMINA_TYPE_INVALID) {
+        err_bad_type(S, &typ);
+        S->error.pos = this->pos;
+        return invalid_value();
+    }
+
+    size_t sz = align_of(S, &typ);
+    Value ret = mk_primitive_value(GRAMINA_PRIMITIVE_ULONG, (PrimitiveInitialiser) { .u64 = sz });
+
+    type_free(&typ);
     return ret;
 }

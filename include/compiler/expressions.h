@@ -27,5 +27,8 @@ struct gramina_value gramina_member_expr(struct gramina_compiler_state *S, LLVMV
 struct gramina_value gramina_subscript_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *node);
 struct gramina_value get_property_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *this);
 
+struct gramina_value gramina_size_of_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *this);
+struct gramina_value gramina_align_of_expr(struct gramina_compiler_state *S, LLVMValueRef function, struct gramina_ast_node *this);
+
 #endif
 #include "gen/compiler/expressions.h"
