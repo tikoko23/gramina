@@ -30,6 +30,7 @@
   (alternate_and_op)
   (fallback_op)
   (assignment_op)
+  (kw_op)
   "&"
   "="
   "->"

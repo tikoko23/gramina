@@ -219,12 +219,18 @@ module.exports = grammar({
       keyword("false")
     ),
 
+    kw_op: _ => choice(
+      keyword("sizeof"),
+      keyword("alignof"),
+    ),
+
     value: $ => choice(
       $.identifier,
       $.number,
       $.bool,
       $.char,
       $.string,
+      seq($.kw_op, $.typename)
     ),
 
     expression: $ => $.assignment_exp,
@@ -312,7 +318,8 @@ module.exports = grammar({
     assignment_exp: $ => higher($.assignment_exp, $.fallback_exp, $.assignment_op),
   },
   conflicts: $ => [
-    [ $.value, $.typename ]
+    [ $.value, $.typename ],
+    [ $.typename ],
   ]
 });
 
