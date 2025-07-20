@@ -1003,6 +1003,31 @@ static AstNode *lit_quoted(ParserState *S) {
     return this;
 }
 
+static AstNode *keyword_op(ParserState *S) {
+    TokenPosition pos = CURRENT(S).pos;
+
+    AstNodeType op;
+    switch (CURRENT(S).type) {
+    case GRAMINA_TOK_KW_SIZEOF:
+        op = GRAMINA_AST_OP_SIZEOF;
+        break;
+    case GRAMINA_TOK_KW_ALIGNOF:
+        op = GRAMINA_AST_OP_ALIGNOF;
+        break;
+    default:
+        return NULL;
+    }
+
+    CONSUME(S);
+
+    AstNode *typ = typename(S);
+    AstNode *node = mk_ast_node_lr(NULL, typ, NULL);
+    node->type = op;
+    node->pos = pos;
+
+    return node;
+}
+
 static AstNode *identifier(ParserState *S) {
     Token cur = CURRENT(S);
     if (cur.type != GRAMINA_TOK_IDENTIFIER) {
@@ -1188,6 +1213,9 @@ static AstNode *value(ParserState *S) {
     case GRAMINA_TOK_KW_TRUE:
     case GRAMINA_TOK_KW_FALSE:
         return lit_bool(S);
+    case GRAMINA_TOK_KW_SIZEOF:
+    case GRAMINA_TOK_KW_ALIGNOF:
+        return keyword_op(S);
     case GRAMINA_TOK_LIT_STR_SINGLE:
     case GRAMINA_TOK_LIT_STR_DOUBLE:
         return lit_quoted(S);

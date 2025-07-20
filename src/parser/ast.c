@@ -400,6 +400,11 @@ StringView gramina_ast_node_type_to_str(AstNodeType e) {
     case GRAMINA_AST_OP_RETHROW:
         return mk_sv_c("OP_RETHROW");
 
+    case GRAMINA_AST_OP_SIZEOF:
+        return mk_sv_c("OP_SIZEOF");
+    case GRAMINA_AST_OP_ALIGNOF:
+        return mk_sv_c("OP_ALIGNOF");
+
     case GRAMINA_AST_OP_CONCAT:
         return mk_sv_c("OP_CONCAT");
 
