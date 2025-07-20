@@ -342,6 +342,10 @@ StringView gramina_token_type_to_str(TokenType t) {
         return mk_sv_c("KW_WHILE");
     case GRAMINA_TOK_KW_RETURN:
         return mk_sv_c("KW_RETURN");
+    case GRAMINA_TOK_KW_SIZEOF:
+        return mk_sv_c("KW_SIZEOF");
+    case GRAMINA_TOK_KW_ALIGNOF:
+        return mk_sv_c("KW_ALIGNOF");
 
     // Strings
     case GRAMINA_TOK_LIT_STR_SINGLE:
