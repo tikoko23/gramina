@@ -19,5 +19,8 @@ struct gramina_value gramina_deref(struct gramina_compiler_state *S, const struc
 
 LLVMValueRef gramina_build_alloca(struct gramina_compiler_state *S, const struct gramina_type *type, const char *name);
 
+size_t gramina_size_of(struct gramina_compiler_state *S, const struct gramina_type *type);
+size_t gramina_align_of(struct gramina_compiler_state *S, const struct gramina_type *type);
+
 #endif
 #include "gen/compiler/mem.h"

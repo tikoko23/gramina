@@ -238,3 +238,11 @@ LLVMValueRef build_alloca(CompilerState *S, const Type *type, const char *name) 
 
     return ret;
 }
+
+size_t size_of(struct gramina_compiler_state *S, const struct gramina_type *type) {
+    return LLVMABISizeOfType(S->llvm_target_data, type->llvm);
+}
+
+size_t align_of(struct gramina_compiler_state *S, const struct gramina_type *type) {
+    return LLVMABIAlignmentOfType(S->llvm_target_data, type->llvm);
+}
