@@ -12,6 +12,10 @@
 
 #define MAKE_TEST(_name) ((Test){ .name = #_name, .tester = TEST_ ## _name })
 #define TEST(name) void TEST_ ## name()
+#define execute(prog, proc) \
+    for (bool __b = true, __a = true; __a; __a = false) \
+    for (Subprocess proc = mk_sbp(); __b && (sbp_arg_cstr(&proc, prog), sbp_run(&proc), 1); sbp_free(&proc)) \
+    for (; __b; __b = false) \
 
 #include <setjmp.h>
 

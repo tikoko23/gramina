@@ -1,0 +1,53 @@
+#extern("powf")
+fn Powf(float x, float y) -> float;
+
+#extern("exit")
+fn Exit(int status);
+
+// POSIX only
+#extern("write")
+fn Write(int fd, void& buf, ulong n);
+
+fn Putchar(byte ch) {
+    Write(1, \$(\long(&ch)), 1u);
+}
+
+fn Absf(float x) -> float {
+    if x < 0 {
+        return -x;
+    }
+
+    return x;
+}
+
+fn PrintUlong(ulong n) {
+    if n == 0u {
+        Putchar('0');
+        return;
+    }
+
+    byte[32] buf;
+    uint i = 0u;
+
+    while n != 0u {
+        buf[i] = \$(n % 10u) + '0';
+        i += 1u;
+        n /= 10u;
+    }
+
+    for int j = \$(i - 1u); j >= 0; j -= 1 {
+        Putchar(buf[j]);
+    }
+}
+
+#extern("_start")
+fn main() {
+    int[12] arr;
+    int[] sl = arr;
+
+    PrintUlong(sl:length);
+    Putchar('\n');
+    PrintUlong(\$(sl:ptr));
+    Putchar('\n');
+    PrintUlong(\$(&arr[0]));
+}

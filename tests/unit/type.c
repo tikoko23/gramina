@@ -2,7 +2,7 @@
 
 #include "compiler/type.h"
 
-static void test_primitives() {
+static void test_primitives(void) {
     Type t = type_from_primitive(GRAMINA_PRIMITIVE_BOOL);
     String s = type_to_str(&t);
 
@@ -24,8 +24,61 @@ static void test_primitives() {
     str_free(&s);
 }
 
-void TEST_TypeToString() {
+static void test_slice(void) {
+    Type el = type_from_primitive(GRAMINA_PRIMITIVE_BYTE);
+    Type t = mk_slice_type(&el);
+    t.is_const = true;
+
+    String s = type_to_str(&t);
+    if (str_cmp_c(&s, "byte const[]")) {
+        type_free(&t);
+        str_free(&s);
+        test_fail();
+    }
+
+    type_free(&t);
+    str_free(&s);
+}
+
+static void test_array(void) {
+    Type el = type_from_primitive(GRAMINA_PRIMITIVE_BYTE);
+    el.is_const = true;
+
+    Type t = mk_array_type(&el, 23);
+    t.is_const = true;
+
+    String s = type_to_str(&t);
+    if (str_cmp_c(&s, "const byte const[23]")) {
+        type_free(&t);
+        str_free(&s);
+        test_fail();
+    }
+
+    type_free(&t);
+    str_free(&s);
+}
+
+static void test_ptr(void) {
+    Type el = type_from_primitive(GRAMINA_PRIMITIVE_FLOAT);
+    Type t = mk_pointer_type(&el);
+
+    String s = type_to_str(&t);
+
+    if (str_cmp_c(&s, "float&")) {
+        type_free(&t);
+        str_free(&s);
+        test_fail();
+    }
+
+    type_free(&t);
+    str_free(&s);
+}
+
+void TEST_TypeConstructor() {
     test_primitives();
+    test_slice();
+    test_array();
+    test_ptr();
     test_ok();
 }
 
