@@ -43,6 +43,10 @@ TokenType gramina_classify_wordlike(const StringView *w) {
         return GRAMINA_TOK_KW_WHILE;
     } else if (sv_cmp_c(w, "return") == 0) {
         return GRAMINA_TOK_KW_RETURN;
+    } else if (sv_cmp_c(w, "sizeof") == 0) {
+        return GRAMINA_TOK_KW_SIZEOF;
+    } else if (sv_cmp_c(w, "alignof") == 0) {
+        return GRAMINA_TOK_KW_ALIGNOF;
     } else {
         return GRAMINA_TOK_IDENTIFIER;
     }
