@@ -86,12 +86,13 @@ int main(int argc, char **argv) {
     Test tests[] = {
         MAKE_TEST(Hello),
         MAKE_TEST(Exit),
-        MAKE_TEST(TypeToString),
+        MAKE_TEST(TypeConstructor),
         MAKE_TEST(SStream),
         MAKE_TEST(Constness),
         MAKE_TEST(ArrayBadLen),
         MAKE_TEST(ArrayOk),
         MAKE_TEST(Pipe),
+        MAKE_TEST(SliceRef),
     };
 
     size_t n_tests = (sizeof tests) / (sizeof tests[0]);
